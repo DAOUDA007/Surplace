@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+Backend/data/*.db
+Backend/data/*.db-*
+.env*.local
+Frontend/certificates/
+Backend/.env
+Backend/data/emails/
