@@ -9,6 +9,8 @@ export interface User {
   email?: string | null;
   /** Administrateur principal (seul à pouvoir gérer les autres administrateurs). */
   isPrincipal?: boolean;
+  /** Passager invité : a commandé sans créer de compte (pas de code PIN). */
+  isGuest?: boolean;
 }
 
 export interface AdminAccount {
@@ -66,6 +68,8 @@ export interface Ride {
 export interface DriverProfile {
   plate: string;
   motoModel: string;
+  /** Numéro du permis de conduire (null pour les comptes créés avant ce champ). */
+  licenseNumber: string | null;
   status: "pending" | "approved" | "suspended";
   isOnline: boolean;
   lat: number | null;
@@ -124,6 +128,7 @@ export interface AdminDriver {
   createdAt: string;
   plate: string;
   motoModel: string;
+  licenseNumber: string | null;
   status: "pending" | "approved" | "suspended";
   isOnline: number;
   lat: number | null;
@@ -142,6 +147,8 @@ export interface AdminPassenger {
   email: string | null;
   createdAt: string;
   blocked: number;
+  /** 1 si le passager a commandé sans créer de compte. */
+  isGuest: number;
   totalRides: number;
   completedRides: number;
   cancelledRides: number;

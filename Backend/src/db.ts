@@ -16,13 +16,16 @@ CREATE TABLE IF NOT EXISTS users (
   created_at  TEXT NOT NULL,
   blocked     INTEGER NOT NULL DEFAULT 0,
   is_principal INTEGER NOT NULL DEFAULT 0,
-  deleted_at  TEXT
+  deleted_at  TEXT,
+  guest       INTEGER NOT NULL DEFAULT 0,
+  guest_phone TEXT
 );
 
 CREATE TABLE IF NOT EXISTS drivers (
   user_id       INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   plate         TEXT NOT NULL,
   moto_model    TEXT NOT NULL,
+  license_number TEXT,
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'suspended')),
   is_online     INTEGER NOT NULL DEFAULT 0,
   lat           REAL,
@@ -112,6 +115,13 @@ function migrate(db: Database.Database) {
   if (!userColumns.includes("deleted_at")) {
     db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT");
   }
+  // Passagers invités (commande sans inscription) : leur vrai numéro est dans guest_phone.
+  if (!userColumns.includes("guest")) {
+    db.exec("ALTER TABLE users ADD COLUMN guest INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!userColumns.includes("guest_phone")) {
+    db.exec("ALTER TABLE users ADD COLUMN guest_phone TEXT");
+  }
   // Il y a toujours un administrateur principal : à défaut, le plus ancien administrateur actif.
   const hasPrincipal = db.prepare("SELECT 1 FROM users WHERE role = 'admin' AND is_principal = 1").get();
   if (!hasPrincipal) {
@@ -121,6 +131,10 @@ function migrate(db: Database.Database) {
     ).run();
   }
   const driverColumns = (db.prepare("PRAGMA table_info(drivers)").all() as { name: string }[]).map((c) => c.name);
+  // Numéro du permis de conduire (vide pour les chauffeurs inscrits avant ce champ).
+  if (!driverColumns.includes("license_number")) {
+    db.exec("ALTER TABLE drivers ADD COLUMN license_number TEXT");
+  }
   if (!driverColumns.includes("subscription_until")) {
     db.exec("ALTER TABLE drivers ADD COLUMN subscription_until TEXT");
     // Le chauffeur de démonstration reçoit un an d'abonnement pour pouvoir tester.

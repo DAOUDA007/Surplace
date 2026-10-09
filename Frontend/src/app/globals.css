@@ -84,6 +84,36 @@ body {
   transition: background-color 0.2s;
 }
 
+/* Défilement en boucle (« Comment ça marche » sur la page d'accueil).
+   Le contenu est répété 3 fois : décaler d'un tiers ramène exactement au point de départ. */
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-33.3333%);
+  }
+}
+/* Animations réduites demandées par l'appareil : pas de mouvement, défilement manuel. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+  .marquee-track {
+    animation: none;
+  }
+}
+
 /* Marqueurs de carte */
 .pin-marker {
   position: relative;

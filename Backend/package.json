@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "reset-admin-pin": "tsx scripts/reset-admin-pin.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

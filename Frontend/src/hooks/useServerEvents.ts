@@ -3,14 +3,18 @@
 import { useEffect, useRef } from "react";
 import type { ServerEvent } from "@/lib/types";
 
-/** S'abonne au flux temps réel du serveur ; le navigateur se reconnecte automatiquement. */
-export function useServerEvents(onEvent: (event: ServerEvent) => void, onReconnect?: () => void) {
+/**
+ * S'abonne au flux temps réel du serveur ; le navigateur se reconnecte automatiquement.
+ * `enabled = false` : pas de connexion (visiteur pas encore connecté).
+ */
+export function useServerEvents(onEvent: (event: ServerEvent) => void, onReconnect?: () => void, enabled = true) {
   const handlerRef = useRef(onEvent);
   const reconnectRef = useRef(onReconnect);
   handlerRef.current = onEvent;
   reconnectRef.current = onReconnect;
 
   useEffect(() => {
+    if (!enabled) return;
     const source = new EventSource("/api/events");
     let opened = false;
     source.onopen = () => {
@@ -27,5 +31,5 @@ export function useServerEvents(onEvent: (event: ServerEvent) => void, onReconne
       }
     };
     return () => source.close();
-  }, []);
+  }, [enabled]);
 }

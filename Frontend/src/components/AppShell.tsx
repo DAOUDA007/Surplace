@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { forwardRef } from "react";
 import { AppMenu, type MenuLink } from "./AppMenu";
 import { Logo } from "./Logo";
@@ -10,7 +11,8 @@ export function AppShell({
   topCenter,
   children,
 }: {
-  name: string;
+  /** Absent pour un visiteur non connecté : un bouton « Se connecter » remplace le menu. */
+  name?: string;
   links: MenuLink[];
   map: React.ReactNode;
   topCenter?: React.ReactNode;
@@ -25,7 +27,16 @@ export function AppShell({
         </div>
         {topCenter && <div className="pointer-events-auto">{topCenter}</div>}
         <div className="pointer-events-auto">
-          <AppMenu name={name} links={links} />
+          {name ? (
+            <AppMenu name={name} links={links} />
+          ) : (
+            <Link
+              href="/connexion"
+              className="flex h-11 items-center rounded-full bg-surface px-4 text-sm font-semibold shadow-md"
+            >
+              Se connecter
+            </Link>
+          )}
         </div>
       </header>
       {children}

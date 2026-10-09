@@ -4,7 +4,7 @@ import { publish, publishToUser } from "./events";
 import { HttpError } from "./http";
 import { hashPin, verifyPin } from "./password";
 import type { User } from "./types";
-import { normalizePhone, optionalEmail, requiredText, validatePin } from "./validation";
+import { normalizePhone, optionalEmail, requiredText, validateLicense, validatePin } from "./validation";
 
 const ACTIVE_RIDE_SQL = "status IN ('requested', 'accepted', 'arrived', 'in_progress')";
 
@@ -16,8 +16,8 @@ function assertPhoneFree(phone: string, exceptUserId?: number) {
 // --- Profil de l'utilisateur connecté ---
 
 /**
- * Modifie le profil (nom, téléphone ; plaque et moto pour un chauffeur).
- * Un chauffeur qui change de véhicule repasse en validation : l'équipe doit le revérifier.
+ * Modifie le profil (nom, téléphone ; plaque, moto et permis pour un chauffeur).
+ * Un chauffeur qui change de véhicule ou de permis repasse en validation : l'équipe doit le revérifier.
  */
 export function updateProfile(user: User, body: Record<string, unknown>) {
   const name = requiredText(body.name, "Nom");
@@ -32,16 +32,21 @@ export function updateProfile(user: User, body: Record<string, unknown>) {
     if (user.role === "driver") {
       const plate = requiredText(body.plate, "Immatriculation", 20).toUpperCase();
       const motoModel = requiredText(body.motoModel, "Modèle de moto", 40);
-      const current = db.prepare("SELECT plate, moto_model, status FROM drivers WHERE user_id = ?").get(user.id) as {
-        plate: string;
-        moto_model: string;
-        status: string;
-      };
-      const vehicleChanged = current.plate !== plate || current.moto_model !== motoModel;
-      if (vehicleChanged) {
+      const licenseNumber = validateLicense(body.licenseNumber);
+      const current = db
+        .prepare("SELECT plate, moto_model, license_number, status FROM drivers WHERE user_id = ?")
+        .get(user.id) as { plate: string; moto_model: string; license_number: string | null; status: string };
+      const documentsChanged =
+        current.plate !== plate || current.moto_model !== motoModel || current.license_number !== licenseNumber;
+      if (documentsChanged) {
         const busy = db.prepare(`SELECT 1 FROM rides WHERE driver_id = ? AND ${ACTIVE_RIDE_SQL}`).get(user.id);
-        if (busy) throw new HttpError(409, "Terminez votre course avant de modifier votre véhicule.");
-        db.prepare("UPDATE drivers SET plate = ?, moto_model = ? WHERE user_id = ?").run(plate, motoModel, user.id);
+        if (busy) throw new HttpError(409, "Terminez votre course avant de modifier votre véhicule ou votre permis.");
+        db.prepare("UPDATE drivers SET plate = ?, moto_model = ?, license_number = ? WHERE user_id = ?").run(
+          plate,
+          motoModel,
+          licenseNumber,
+          user.id,
+        );
         if (current.status === "approved") {
           db.prepare("UPDATE drivers SET status = 'pending', is_online = 0 WHERE user_id = ?").run(user.id);
           revalidation = true;
@@ -63,6 +68,45 @@ export function changePin(userId: number, currentPin: unknown, newPin: unknown) 
     throw new HttpError(400, "Le code PIN actuel est incorrect.");
   }
   db.prepare("UPDATE users SET pin_hash = ? WHERE id = ?").run(hashPin(validatePin(newPin)), userId);
+}
+
+// --- Passagers invités (commande sans inscription) ---
+
+/**
+ * Crée un compte passager invité, lié au seul appareil qui l'a créé (cookie de session).
+ * Le vrai numéro est rangé dans guest_phone et la colonne phone reçoit une valeur unique fictive :
+ * le numéro ne « réserve » donc aucun compte, et personne ne peut retrouver les courses
+ * d'un invité en connaissant seulement son numéro.
+ */
+export function createGuestPassenger(body: Record<string, unknown>) {
+  const name = requiredText(body.name, "Nom");
+  const phone = normalizePhone(body.phone);
+  const result = db
+    .prepare(
+      `INSERT INTO users (role, name, phone, guest, guest_phone, pin_hash, created_at)
+       VALUES ('passenger', ?, ?, 1, ?, ?, ?)`,
+    )
+    .run(
+      name,
+      `invite-${randomBytes(8).toString("hex")}`,
+      phone,
+      hashPin(randomBytes(8).toString("hex")),
+      new Date().toISOString(),
+    );
+  return Number(result.lastInsertRowid);
+}
+
+/** Transforme un compte invité en compte complet (numéro + code PIN) : ses courses sont conservées. */
+export function convertGuest(userId: number, body: Record<string, unknown>) {
+  const name = requiredText(body.name, "Nom");
+  const phone = normalizePhone(body.phone);
+  const pin = validatePin(body.pin);
+  const email = optionalEmail(body.email);
+  assertPhoneFree(phone, userId);
+  db.prepare(
+    "UPDATE users SET name = ?, phone = ?, email = ?, pin_hash = ?, guest = 0, guest_phone = NULL WHERE id = ? AND guest = 1",
+  ).run(name, phone, email, hashPin(pin), userId);
+  return { name, email };
 }
 
 // --- Suppression de comptes passager / chauffeur ---
@@ -88,7 +132,8 @@ export function deleteMemberAccount(userId: number, role: "passenger" | "driver"
       return;
     }
     db.prepare(
-      `UPDATE users SET name = ?, phone = ?, email = NULL, pin_hash = ?, blocked = 1, deleted_at = ? WHERE id = ?`,
+      `UPDATE users SET name = ?, phone = ?, guest_phone = NULL, email = NULL, pin_hash = ?, blocked = 1, deleted_at = ?
+        WHERE id = ?`,
     ).run(
       role === "driver" ? "Chauffeur supprimé" : "Passager supprimé",
       `supprime-${userId}`,
@@ -99,7 +144,7 @@ export function deleteMemberAccount(userId: number, role: "passenger" | "driver"
     if (role === "driver") {
       db.prepare(
         `UPDATE drivers SET status = 'suspended', is_online = 0, lat = NULL, lng = NULL,
-                plate = '—', moto_model = '—', subscription_until = NULL WHERE user_id = ?`,
+                plate = '—', moto_model = '—', license_number = NULL, subscription_until = NULL WHERE user_id = ?`,
       ).run(userId);
       db.prepare("DELETE FROM subscriptions WHERE driver_id = ? AND status = 'pending'").run(userId);
     }

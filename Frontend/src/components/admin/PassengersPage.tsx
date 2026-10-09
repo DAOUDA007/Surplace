@@ -89,6 +89,14 @@ export function PassengersPage() {
                     <td className={td}>
                       <p className="font-semibold">
                         {p.name}
+                        {p.isGuest ? (
+                          <span
+                            className="ml-2 rounded-full bg-subtle px-2 py-0.5 text-xs text-muted"
+                            title="A commandé sans créer de compte"
+                          >
+                            Invité
+                          </span>
+                        ) : null}
                         {p.blocked ? (
                           <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">Bloqué</span>
                         ) : null}

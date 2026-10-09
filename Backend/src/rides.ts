@@ -15,7 +15,7 @@ const ACTIVE_SQL = ACTIVE_STATUSES.map((s) => `'${s}'`).join(", ");
 
 const SELECT_RIDE = `
   SELECT r.*,
-         p.name AS passenger_name, p.phone AS passenger_phone,
+         p.name AS passenger_name, COALESCE(p.guest_phone, p.phone) AS passenger_phone,
          d.name AS driver_name, d.phone AS driver_phone,
          dr.plate, dr.moto_model, dr.lat AS driver_lat, dr.lng AS driver_lng,
          dr.rating_sum, dr.rating_count

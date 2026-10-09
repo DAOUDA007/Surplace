@@ -31,6 +31,13 @@ export function requiredText(input: unknown, label: string, max = 80): string {
   return text.slice(0, max);
 }
 
+/** Numéro du permis de conduire d'un chauffeur (vérifié ensuite par l'équipe SURPLACE). */
+export function validateLicense(input: unknown): string {
+  const license = requiredText(input, "Numéro de permis de conduire", 30).toUpperCase();
+  if (license.length < 5) throw new HttpError(400, "Numéro de permis de conduire trop court.");
+  return license;
+}
+
 export function parseId(input: string): number {
   const id = Number(input);
   if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, "Identifiant invalide.");

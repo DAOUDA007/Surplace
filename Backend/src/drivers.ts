@@ -7,6 +7,7 @@ import type { DriverProfile, User } from "./types";
 interface DriverRow {
   plate: string;
   moto_model: string;
+  license_number: string | null;
   status: DriverProfile["status"];
   is_online: number;
   lat: number | null;
@@ -23,6 +24,7 @@ export function getDriverProfile(userId: number): DriverProfile | null {
   return {
     plate: row.plate,
     motoModel: row.moto_model,
+    licenseNumber: row.license_number,
     status: row.status,
     isOnline: row.is_online === 1,
     lat: row.lat,

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell, Sheet } from "@/components/AppShell";
 import { MapView, type MapMarker } from "@/components/MapView";
@@ -19,10 +21,22 @@ const LINKS = [
   { href: "/passager/profil", label: "👤 Mon profil" },
 ];
 
-export function PassengerApp({ user }: { user: User }) {
+/** Menu d'un passager invité : il n'a pas de profil, mais peut créer son compte. */
+const GUEST_LINKS = [
+  { href: "/passager/historique", label: "🧾 Mes courses" },
+  { href: "/inscription", label: "👤 Créer mon compte" },
+];
+
+const inputClass =
+  "h-12 w-full rounded-2xl border border-line bg-surface px-4 text-[15px] outline-none transition focus:border-ink";
+
+/** `user` est null pour un visiteur non connecté : il peut tout de même commander (mode invité). */
+export function PassengerApp({ user }: { user: User | null }) {
+  const router = useRouter();
+  const signedIn = !!user;
   const [ride, setRide] = useState<Ride | null>(null);
   const [rideToRate, setRideToRate] = useState<Ride | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(!signedIn);
   const [pickup, setPickup] = useState<Place | null>(null);
   const [dropoff, setDropoff] = useState<Place | null>(null);
   const [target, setTarget] = useState<"pickup" | "dropoff">("pickup");
@@ -33,6 +47,9 @@ export function PassengerApp({ user }: { user: User }) {
   const [locating, setLocating] = useState(false);
   const [accuracy, setAccuracy] = useState<{ center: LatLng; radius: number } | null>(null);
   const [locationHint, setLocationHint] = useState("");
+  /** Visiteur sans compte : nom et numéro demandés au moment de commander. */
+  const [contact, setContact] = useState({ name: "", phone: "" });
+  const [askContact, setAskContact] = useState(false);
   /** Le passager a choisi son départ lui-même : la localisation ne doit plus l'écraser. */
   const manualPickup = useRef(false);
 
@@ -42,6 +59,7 @@ export function PassengerApp({ user }: { user: User }) {
   const sheet = useSheetHeight<HTMLDivElement>();
 
   const refresh = useCallback(async () => {
+    if (!signedIn) return;
     try {
       const data = await api<{ ride: Ride | null; rideToRate: Ride | null }>("/api/rides/current");
       const prev = previous.current;
@@ -67,7 +85,7 @@ export function PassengerApp({ user }: { user: User }) {
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [signedIn]);
 
   useEffect(() => {
     refresh();
@@ -82,7 +100,7 @@ export function PassengerApp({ user }: { user: User }) {
     } else if (event.type === "ride") {
       refresh();
     }
-  }, refresh);
+  }, refresh, signedIn);
 
   const locate = useCallback(async () => {
     manualPickup.current = false;
@@ -157,12 +175,25 @@ export function PassengerApp({ user }: { user: User }) {
     }
   }
 
-  const order = () =>
+  const guestForm = !signedIn && askContact;
+
+  const order = () => {
+    // Visiteur sans compte : on demande d'abord son nom et son numéro.
+    if (!signedIn && !askContact) {
+      setAskContact(true);
+      return;
+    }
     run(async () => {
-      const { ride } = await api<{ ride: Ride }>("/api/rides", { pickup, dropoff });
+      const { ride } = signedIn
+        ? await api<{ ride: Ride }>("/api/rides", { pickup, dropoff })
+        : await api<{ ride: Ride }>("/api/rides/guest", { ...contact, pickup, dropoff });
       previous.current = ride;
       setRide(ride);
+      setAskContact(false);
+      // Le serveur vient de connecter l'invité sur cet appareil : la page se met à jour (menu, suivi en direct).
+      if (!signedIn) router.refresh();
     });
+  };
 
   const cancel = () =>
     run(async () => {
@@ -216,7 +247,7 @@ export function PassengerApp({ user }: { user: User }) {
   );
 
   return (
-    <AppShell name={user.name} links={LINKS} map={map}>
+    <AppShell name={user?.name} links={user?.isGuest ? GUEST_LINKS : LINKS} map={map}>
       <Sheet ref={sheet.ref}>
         {notice && (
           <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>
@@ -242,7 +273,12 @@ export function PassengerApp({ user }: { user: User }) {
           />
         ) : (
           <div className="space-y-3">
-            <h1 className="text-xl font-extrabold">Où allez-vous, {user.name.split(" ")[0]} ?</h1>
+            <h1 className="text-xl font-extrabold">
+              Où allez-vous{user ? `, ${user.name.split(" ")[0]}` : ""} ?
+            </h1>
+            {!user && (
+              <p className="-mt-2 text-sm text-muted">Pas besoin de compte : commandez directement.</p>
+            )}
             <PlaceSearch
               kind="pickup"
               value={pickup}
@@ -296,8 +332,50 @@ export function PassengerApp({ user }: { user: User }) {
                   <span className="font-medium">💵 Paiement</span>
                   <span className="font-semibold">Espèces</span>
                 </div>
-                <Button onClick={order} loading={busy} className="w-full text-lg">
-                  Commander · {formatFcfa(estimate.price)}
+                {guestForm && (
+                  <form
+                    id="guest-contact"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      order();
+                    }}
+                    className="space-y-2 rounded-2xl bg-subtle p-4"
+                  >
+                    <p className="text-sm font-semibold">Pour que le chauffeur puisse vous joindre</p>
+                    <input
+                      required
+                      autoComplete="name"
+                      value={contact.name}
+                      onChange={(e) => setContact((c) => ({ ...c, name: e.target.value }))}
+                      placeholder="Votre nom"
+                      className={inputClass}
+                    />
+                    <input
+                      required
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={contact.phone}
+                      onChange={(e) => setContact((c) => ({ ...c, phone: e.target.value }))}
+                      placeholder="Votre numéro (07 00 00 00 00)"
+                      className={inputClass}
+                    />
+                    <p className="text-xs text-muted">
+                      Aucun compte nécessaire. Déjà inscrit ?{" "}
+                      <Link href="/connexion" className="font-semibold text-brand">
+                        Se connecter
+                      </Link>
+                    </p>
+                  </form>
+                )}
+                <Button
+                  type={guestForm ? "submit" : "button"}
+                  form={guestForm ? "guest-contact" : undefined}
+                  onClick={guestForm ? undefined : order}
+                  loading={busy}
+                  className="w-full text-lg"
+                >
+                  {guestForm ? "Confirmer" : "Commander"} · {formatFcfa(estimate.price)}
                 </Button>
               </div>
             )}

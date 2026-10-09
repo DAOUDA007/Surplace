@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const user = (await getSession())?.user ?? null;
-  if (user) redirect(homeFor(user.role));
+  // Un passager invité peut se connecter à un compte existant ou créer le sien.
+  if (user && !user.isGuest) redirect(homeFor(user.role));
 
   return (
     <main className="flex min-h-full flex-col px-5 py-6">

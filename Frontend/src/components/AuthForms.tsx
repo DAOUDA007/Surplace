@@ -97,9 +97,26 @@ export function LoginForm() {
   );
 }
 
-export function RegisterForm({ initialRole }: { initialRole: "passenger" | "driver" }) {
+export function RegisterForm({
+  initialRole,
+  defaults,
+  guest = false,
+}: {
+  initialRole: "passenger" | "driver";
+  /** Nom et numéro déjà connus (passager invité qui crée son compte). */
+  defaults?: { name: string; phone: string };
+  guest?: boolean;
+}) {
   const [role, setRole] = useState(initialRole);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", pin: "", plate: "", motoModel: "" });
+  const [form, setForm] = useState({
+    name: defaults?.name ?? "",
+    phone: defaults?.phone ?? "",
+    email: "",
+    pin: "",
+    plate: "",
+    motoModel: "",
+    licenseNumber: "",
+  });
   const { submit, error, loading } = useSubmit();
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -189,12 +206,28 @@ export function RegisterForm({ initialRole }: { initialRole: "passenger" | "driv
               className={inputClass}
             />
           </Field>
+          <Field label="Numéro du permis de conduire" hint="Tel qu'il figure sur votre permis (catégorie A).">
+            <input
+              required
+              minLength={5}
+              maxLength={30}
+              value={form.licenseNumber}
+              onChange={(e) => set("licenseNumber")(e.target.value.toUpperCase())}
+              placeholder="Ex. CI-123456789"
+              className={inputClass}
+            />
+          </Field>
           <p className="text-xs text-muted">
-            Votre compte sera vérifié par l&apos;équipe SURPLACE avant de pouvoir recevoir des courses.
+            Votre compte sera vérifié par l&apos;équipe SURPLACE (moto et permis) avant de pouvoir recevoir des courses.
           </p>
         </div>
       )}
 
+      {guest && role === "passenger" && (
+        <p className="rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">
+          Vos courses déjà commandées sans compte seront conservées.
+        </p>
+      )}
       <ErrorMessage>{error}</ErrorMessage>
       <Button type="submit" loading={loading} className="w-full">
         Créer mon compte

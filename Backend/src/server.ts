@@ -3,7 +3,9 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import {
   changePin,
+  convertGuest,
   createAdmin,
+  createGuestPassenger,
   deleteAdmin,
   deleteMemberAccount,
   listAdmins,
@@ -45,9 +47,11 @@ import {
   reviewSubscriptionRequest,
 } from "./subscriptions";
 import type { Role, ServerEvent } from "./types";
-import { normalizePhone, optionalEmail, parseId, requiredText, validatePin } from "./validation";
+import { normalizePhone, optionalEmail, parseId, requiredText, validateLicense, validatePin } from "./validation";
 
 const PORT = Number(process.env.PORT ?? 4000);
+
+const GUEST_PROFILE_ERROR = "Créez d'abord votre compte (menu ☰ › Créer mon compte).";
 
 const app = express();
 app.disable("x-powered-by");
@@ -70,6 +74,14 @@ api.post(
     const pin = validatePin(body.pin);
     const email = optionalEmail(body.email);
 
+    // Un passager invité qui s'inscrit garde son compte et ses courses.
+    const current = getCurrentUser(req);
+    if (current?.isGuest && role === "passenger") {
+      convertGuest(current.id, body);
+      if (email) sendMailInBackground(welcomeEmail({ name, email, role }));
+      return { redirect: homeFor(role) };
+    }
+
     if (db.prepare("SELECT 1 FROM users WHERE phone = ?").get(phone)) {
       throw new HttpError(409, "Ce numéro est déjà utilisé.");
     }
@@ -80,10 +92,11 @@ api.post(
         .run(role, name, phone, email, hashPin(pin), new Date().toISOString());
       const id = Number(result.lastInsertRowid);
       if (role === "driver") {
-        db.prepare("INSERT INTO drivers (user_id, plate, moto_model) VALUES (?, ?, ?)").run(
+        db.prepare("INSERT INTO drivers (user_id, plate, moto_model, license_number) VALUES (?, ?, ?, ?)").run(
           id,
           requiredText(body.plate, "Immatriculation", 20).toUpperCase(),
           requiredText(body.motoModel, "Modèle de moto", 40),
+          validateLicense(body.licenseNumber),
         );
       }
       return id;
@@ -136,6 +149,7 @@ api.post(
   "/me/profile",
   route((req) => {
     const user = requireUser(req);
+    if (user.isGuest) throw new HttpError(403, GUEST_PROFILE_ERROR);
     return updateProfile(user, req.body ?? {});
   }),
 );
@@ -144,6 +158,7 @@ api.post(
   "/me/pin",
   route((req) => {
     const user = requireUser(req);
+    if (user.isGuest) throw new HttpError(403, GUEST_PROFILE_ERROR);
     changePin(user.id, req.body?.currentPin, req.body?.newPin);
     return { ok: true };
   }),
@@ -167,6 +182,32 @@ api.post(
   route((req) => {
     const user = requireUser(req, "passenger");
     return { ride: createRide(user, req.body?.pickup, req.body?.dropoff) };
+  }),
+);
+
+// Limite contre les fausses commandes : 5 comptes invités par adresse IP et par heure.
+const guestOrdersByIp = new Map<string, number[]>();
+
+/** Commande sans compte : crée un passager invité (nom + numéro), sa course, puis le connecte sur cet appareil. */
+api.post(
+  "/rides/guest",
+  route((req, res) => {
+    if (getCurrentUser(req)) throw new HttpError(409, "Vous êtes déjà connecté : actualisez la page.");
+    const ip = req.ip ?? "inconnu";
+    const now = Date.now();
+    const recent = (guestOrdersByIp.get(ip) ?? []).filter((t) => now - t < 3600_000);
+    if (recent.length >= 5) {
+      throw new HttpError(429, "Trop de commandes sans compte depuis cet appareil. Inscrivez-vous pour continuer.");
+    }
+    const body = req.body ?? {};
+    // Le compte invité n'est créé que si la course est valide (sinon tout est annulé).
+    const ride = db.transaction(() => {
+      const userId = createGuestPassenger(body);
+      return createRide({ id: userId, role: "passenger", name: "", phone: "" }, body.pickup, body.dropoff);
+    })();
+    guestOrdersByIp.set(ip, [...recent, now]);
+    createSession(res, ride.passenger.id);
+    return { ride };
   }),
 );
 

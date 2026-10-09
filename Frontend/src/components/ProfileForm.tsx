@@ -37,14 +37,22 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
     email: user.email ?? "",
     plate: driver?.plate ?? "",
     motoModel: driver?.motoModel ?? "",
+    licenseNumber: driver?.licenseNumber ?? "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
-    setForm((f) => ({ ...f, [k]: k === "plate" ? e.target.value.toUpperCase() : e.target.value }));
+    setForm((f) => ({
+      ...f,
+      [k]: k === "plate" || k === "licenseNumber" ? e.target.value.toUpperCase() : e.target.value,
+    }));
 
-  const vehicleChanged = !!driver && (form.plate.trim() !== driver.plate || form.motoModel.trim() !== driver.motoModel);
+  const vehicleChanged =
+    !!driver &&
+    (form.plate.trim() !== driver.plate ||
+      form.motoModel.trim() !== driver.motoModel ||
+      form.licenseNumber.trim() !== (driver.licenseNumber ?? ""));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -93,12 +101,27 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
             <Field label="Marque et modèle">
               <input required value={form.motoModel} onChange={set("motoModel")} className={inputClass} />
             </Field>
+            <Field label="Numéro du permis de conduire">
+              <input
+                required
+                minLength={5}
+                maxLength={30}
+                value={form.licenseNumber}
+                onChange={set("licenseNumber")}
+                className={inputClass}
+              />
+            </Field>
           </div>
+        )}
+        {driver && !driver.licenseNumber && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Renseignez le numéro de votre permis de conduire : il est désormais demandé à tous les chauffeurs.
+          </p>
         )}
         {vehicleChanged && driver?.status === "approved" && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            ⚠️ En changeant de véhicule, votre compte repassera en validation : vous ne pourrez plus passer en ligne
-            jusqu&apos;à ce que l&apos;équipe SURPLACE ait vérifié votre nouvelle moto.
+            ⚠️ En changeant de véhicule ou de permis, votre compte repassera en validation : vous ne pourrez plus
+            passer en ligne jusqu&apos;à ce que l&apos;équipe SURPLACE ait vérifié vos informations.
           </p>
         )}
         <ErrorMessage>{error}</ErrorMessage>

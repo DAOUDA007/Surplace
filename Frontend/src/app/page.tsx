@@ -11,11 +11,14 @@ import type { PublicReviews } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const STEPS = [
-  { icon: "📍", title: "Indiquez votre trajet", text: "Choisissez votre point de départ et votre destination sur la carte." },
-  { icon: "💰", title: "Voyez le prix avant", text: "Le tarif est calculé à l'avance. Pas de marchandage." },
-  { icon: "🏍️", title: "Un chauffeur arrive", text: "Suivez votre moto en temps réel jusqu'à votre position." },
-  { icon: "💵", title: "Payez en espèces", text: "Réglez le montant affiché directement au chauffeur." },
+  { title: "Indiquez votre trajet", text: "Choisissez votre point de départ et votre destination sur la carte." },
+  { title: "Voyez le prix avant", text: "Le tarif est calculé à l'avance. Pas de marchandage." },
+  { title: "Un chauffeur arrive", text: "Suivez votre moto en temps réel jusqu'à votre position." },
+  { title: "Payez en espèces", text: "Réglez le montant affiché directement au chauffeur." },
 ];
+
+/** Les étapes sont répétées 3 fois pour que le défilement en boucle ne laisse jamais de vide. */
+const MARQUEE_STEPS = [...STEPS, ...STEPS, ...STEPS];
 
 // Exemple de course affiché dans le bandeau, calculé avec le vrai tarif.
 const EXAMPLE_FROM = POPULAR_PLACES.find((p) => p.label === "Gare routière")!;
@@ -45,7 +48,8 @@ function StarRow({ value, size = "text-base" }: { value: number; size?: string }
 export default async function Home() {
   const [session, reviews] = await Promise.all([getSession(), loadReviews()]);
   const user = session?.user ?? null;
-  const appHref = user ? homeFor(user.role) : "/inscription";
+  // Commander ne demande pas de compte : un visiteur va directement à l'écran de commande.
+  const appHref = user ? homeFor(user.role) : "/passager";
 
   return (
     <main className="min-h-full">
@@ -142,19 +146,21 @@ export default async function Home() {
       </section>
 
       {/* --- Comment ça marche --- */}
-      <section className="mx-auto max-w-6xl px-5 py-16">
-        <h2 className="text-3xl font-extrabold tracking-tight">Comment ça marche</h2>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s, i) => (
-            <div key={s.title} className="rounded-3xl bg-surface p-6 shadow-sm ring-1 ring-line">
-              <div className="flex items-center justify-between">
-                <span className="text-3xl">{s.icon}</span>
-                <span className="text-sm font-bold text-faint">0{i + 1}</span>
+      <section className="py-16">
+        <h2 className="mx-auto max-w-6xl px-5 text-3xl font-extrabold tracking-tight">Comment ça marche</h2>
+        {/* Défilement continu (pause au survol) ; voir .marquee dans globals.css. */}
+        <div className="marquee mt-8 py-2">
+          <div className="marquee-track">
+            {MARQUEE_STEPS.map((s, i) => (
+              <div key={i} aria-hidden={i >= STEPS.length} className="w-72 shrink-0 pr-4">
+                <div className="h-full rounded-3xl bg-surface p-6 shadow-sm ring-1 ring-line">
+                  <span className="text-sm font-bold text-brand">0{(i % STEPS.length) + 1}</span>
+                  <h3 className="mt-3 font-bold">{s.title}</h3>
+                  <p className="mt-1 text-sm text-muted">{s.text}</p>
+                </div>
               </div>
-              <h3 className="mt-4 font-bold">{s.title}</h3>
-              <p className="mt-1 text-sm text-muted">{s.text}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 

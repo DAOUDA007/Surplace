@@ -93,7 +93,7 @@ export function listAdminRides(filters: { status?: string; q?: string; driverId?
   if (q) {
     const like = `%${q}%`;
     where.push(
-      `(CAST(r.id AS TEXT) = ? OR p.name LIKE ? OR p.phone LIKE ? OR d.name LIKE ? OR d.phone LIKE ?
+      `(CAST(r.id AS TEXT) = ? OR p.name LIKE ? OR COALESCE(p.guest_phone, p.phone) LIKE ? OR d.name LIKE ? OR d.phone LIKE ?
         OR r.pickup_label LIKE ? OR r.dropoff_label LIKE ?)`,
     );
     params.push(q.replace(/^#/, ""), like, like, like, like, like, like);
@@ -111,6 +111,7 @@ export interface AdminDriver {
   createdAt: string;
   plate: string;
   motoModel: string;
+  licenseNumber: string | null;
   status: "pending" | "approved" | "suspended";
   isOnline: number;
   lat: number | null;
@@ -143,12 +144,13 @@ export function listAdminDrivers(filters: { status?: string; q?: string }) {
   }
   const q = filters.q?.trim();
   if (q) {
-    where.push("(u.name LIKE ? OR u.phone LIKE ? OR d.plate LIKE ? OR u.email LIKE ?)");
-    params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+    where.push("(u.name LIKE ? OR u.phone LIKE ? OR d.plate LIKE ? OR u.email LIKE ? OR d.license_number LIKE ?)");
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
   }
   return db
     .prepare(
       `SELECT u.id, u.name, u.phone, u.email, u.created_at AS createdAt, d.plate, d.moto_model AS motoModel,
+              d.license_number AS licenseNumber,
               d.status, d.is_online AS isOnline, d.lat, d.lng, d.subscription_until AS subscriptionUntil,
               CASE WHEN d.rating_count > 0 THEN ROUND(1.0 * d.rating_sum / d.rating_count, 1) END AS rating,
               d.rating_count AS ratingCount,
@@ -170,12 +172,13 @@ export function listAdminPassengers(filters: { status?: string; q?: string }) {
   if (filters.status === "active") where.push("u.blocked = 0");
   const q = filters.q?.trim();
   if (q) {
-    where.push("(u.name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)");
+    where.push("(u.name LIKE ? OR COALESCE(u.guest_phone, u.phone) LIKE ? OR u.email LIKE ?)");
     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
   }
   return db
     .prepare(
-      `SELECT u.id, u.name, u.phone, u.email, u.created_at AS createdAt, u.blocked,
+      `SELECT u.id, u.name, COALESCE(u.guest_phone, u.phone) AS phone, u.email, u.created_at AS createdAt, u.blocked,
+              u.guest AS isGuest,
               (SELECT COUNT(*) FROM rides r WHERE r.passenger_id = u.id) AS totalRides,
               (SELECT COUNT(*) FROM rides r WHERE r.passenger_id = u.id AND r.status = 'completed') AS completedRides,
               (SELECT COUNT(*) FROM rides r WHERE r.passenger_id = u.id AND r.status = 'cancelled' AND r.cancelled_by = 'passenger') AS cancelledRides,

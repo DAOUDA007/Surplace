@@ -86,7 +86,7 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
               { value: "suspended", label: "Suspendus" },
             ]}
           />
-          <SearchInput onSearch={setQ} placeholder="Nom, téléphone, e-mail, plaque…" />
+          <SearchInput onSearch={setQ} placeholder="Nom, téléphone, e-mail, plaque, permis…" />
         </div>
 
         {loading && !data ? (
@@ -98,7 +98,7 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
             <thead>
               <tr>
                 <th className={th}>Chauffeur</th>
-                <th className={th}>Moto</th>
+                <th className={th}>Moto et permis</th>
                 <th className={th}>Statut</th>
                 <th className={th}>Activité</th>
                 <th className={th}>Abonnement</th>
@@ -122,6 +122,10 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
                       <td className={td}>
                         {d.motoModel}
                         <p className="text-xs font-semibold">{d.plate}</p>
+                        <p className="text-xs text-muted">
+                          Permis :{" "}
+                          {d.licenseNumber ?? <span className="font-semibold text-amber-800">non renseigné</span>}
+                        </p>
                       </td>
                       <td className={td}>
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS[d.status].style}`}>

@@ -35,14 +35,18 @@ export function getCurrentUser(req: Request): User | null {
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT u.id, u.role, u.name, u.phone, u.email, u.is_principal AS isPrincipal
+      `SELECT u.id, u.role, u.name, COALESCE(u.guest_phone, u.phone) AS phone, u.email,
+              u.is_principal AS isPrincipal, u.guest AS isGuest
          FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token = ? AND s.expires_at > ? AND u.blocked = 0 AND u.deleted_at IS NULL`,
     )
-    .get(token, new Date().toISOString()) as (Omit<User, "isPrincipal"> & { isPrincipal: number }) | undefined;
+    .get(token, new Date().toISOString()) as
+    | (Omit<User, "isPrincipal" | "isGuest"> & { isPrincipal: number; isGuest: number })
+    | undefined;
   if (!row) return null;
-  const { isPrincipal, ...user } = row;
-  return user.role === "admin" ? { ...user, isPrincipal: isPrincipal === 1 } : user;
+  const { isPrincipal, isGuest, ...user } = row;
+  if (user.role === "admin") return { ...user, isPrincipal: isPrincipal === 1 };
+  return isGuest ? { ...user, isGuest: true } : user;
 }
 
 /** Lève une erreur 401/403 si l'utilisateur n'est pas connecté ou n'a pas le bon rôle. */
