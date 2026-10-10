@@ -1,4 +1,6 @@
-# 7. Composants, hooks et utilitaires du Frontend
+# 7. Composants, hooks et utilitaires des deux sites
+
+Les sections « components/ », « hooks/ » et « lib/ » décrivent l'**Application** (`Application/src/`). La section « Administration » décrit le site `Administration/src/`, qui réutilise des copies de certains composants (carte, logo, thème, formulaire de profil, `ui.tsx`).
 
 ## Petit rappel React
 
@@ -11,7 +13,7 @@
 
 ---
 
-## `components/` — écrans principaux
+## `components/` — écrans principaux (Application)
 
 ### `PassengerApp.tsx` — l'écran passager (≈ 480 lignes)
 
@@ -22,7 +24,13 @@ pas encore chargé      → rectangle gris animé
 course en cours        → <ActiveRide>   (recherche / chauffeur en route / arrivé / en course)
 course à noter         → <RateRide>     (🎉 + étoiles + commentaire)
 sinon                  → formulaire : départ, destination, prix estimé, bouton « Commander »
+                         (visiteur sans compte : + nom et numéro, bouton « Confirmer »)
 ```
+
+**Mode invité** : `user` vaut `null` pour un visiteur non connecté (`signedIn = false`). Dans ce cas :
+- pas d'appel à `/api/rides/current` ni de flux temps réel (le visiteur n'a pas encore de session) ;
+- au premier clic sur « Commander », un petit formulaire (`guestForm`) demande **nom** et **numéro** « pour que le chauffeur puisse vous joindre », avec un lien « Déjà inscrit ? Se connecter » ;
+- « Confirmer » envoie `POST /api/rides/guest`. Le Backend crée le passager invité, la course et la session, puis `router.refresh()` : la page reçoit maintenant l'utilisateur, le suivi en direct démarre et le menu ☰ apparaît (« Mes courses », « Créer mon compte »).
 
 **États principaux** : `ride` (course en cours), `rideToRate`, `pickup` et `dropoff` (lieux choisis), `target` (quel champ reçoit le prochain clic sur la carte), `driverPos` (position de la moto), `accuracy` (cercle de précision GPS), `notice` / `error` (messages).
 
@@ -33,7 +41,7 @@ sinon                  → formulaire : départ, destination, prix estimé, bout
 4. **`locate()`** : au chargement, place automatiquement le départ sur la position GPS (affinée progressivement). Si l'utilisateur choisit un départ à la main pendant ce temps (`manualPickup`), la localisation ne l'écrase pas. Avertit si la position est à plus de 50 km de Korhogo ou imprécise (> 150 m).
 5. **Choisir un lieu** : par la recherche (`PlaceSearch`), en touchant la carte (`pickOnMap`), ou en faisant glisser un marqueur (`onDragEnd`). Le nom du point est obtenu par `reverseGeocode`.
 6. **Estimation** : `estimateTrip(pickup, dropoff)` calculée dans le navigateur (`useMemo`) → affichage du prix.
-7. **Commander** : `POST /api/rides`. **Annuler** : `POST /api/rides/:id/action { action: "cancel" }`.
+7. **Commander** : `POST /api/rides` (connecté) ou `POST /api/rides/guest` (visiteur). **Annuler** : `POST /api/rides/:id/action { action: "cancel" }`.
 8. **Recadrage de la carte** (`fitTo`) : avant la commande, sur départ + arrivée ; chauffeur en route, sur moto + départ ; en course, sur moto + arrivée.
 9. **Temps d'arrivée** (`eta` dans `ActiveRide`) : distance moto → cible ×1,3 à 25 km/h.
 
@@ -66,7 +74,7 @@ sinon                    → gains du jour, bouton En ligne / Hors ligne, état 
 ### `AppShell.tsx` — la mise en page plein écran
 
 Utilisé par `PassengerApp` et `DriverApp`.
-- `AppShell` : la carte occupe tout l'écran (`absolute inset-0`), la barre du haut flotte au-dessus (logo, élément central facultatif, menu). `pointer-events-none` sur la barre et `pointer-events-auto` sur ses boutons : on peut toucher la carte entre les boutons.
+- `AppShell` : la carte occupe tout l'écran (`absolute inset-0`), la barre du haut flotte au-dessus (logo, élément central facultatif, menu). Sans `name` (visiteur non connecté), le menu est remplacé par un bouton « Se connecter ». `pointer-events-none` sur la barre et `pointer-events-auto` sur ses boutons : on peut toucher la carte entre les boutons.
 - `Sheet` : le panneau. **Sur mobile** : collé en bas, coins arrondis, petite poignée grise, 72 % de la hauteur au maximum. **Sur ordinateur** (`md:`) : carte flottante à gauche de 400 px. `forwardRef` permet à `useSheetHeight` de mesurer sa hauteur.
 - `z-[1000]` : Leaflet utilise des `z-index` jusqu'à ~800 ; il faut passer au-dessus.
 
@@ -102,15 +110,15 @@ Composants internes : `ClickHandler` (écoute les clics), `FitBounds` (recadre ;
 ### `AuthForms.tsx` — connexion et inscription
 
 - `useSubmit()` : envoie le formulaire, puis `router.replace(redirect)` (la réponse du Backend dit où aller) et `router.refresh()`.
-- `LoginForm` : téléphone + PIN.
-- `RegisterForm` : sélecteur Passager / Chauffeur ; les champs **plaque** et **modèle de moto** n'apparaissent que pour un chauffeur ; e-mail facultatif.
+- `LoginForm` : téléphone + PIN (passagers et chauffeurs ; un admin est refusé par le Backend).
+- `RegisterForm` : sélecteur Passager / Chauffeur ; les champs **plaque**, **modèle de moto** et **numéro du permis de conduire** (obligatoire) n'apparaissent que pour un chauffeur ; e-mail facultatif. Props `defaults` et `guest` : pour un invité, nom et numéro pré-remplis et message « Vos courses déjà commandées sans compte seront conservées ».
 - `PinInput` : champ numérique de 4 chiffres (`inputMode="numeric"` → clavier numérique sur mobile).
 - `AuthShell` : titre + sous-titre + contenu, utilisé par les deux pages.
 
 ### `ProfilePage.tsx` et `ProfileForm.tsx` — « Mon profil »
 
 - `ProfilePage` : mise en page (retour à la carte, thème, titre) commune passager / chauffeur.
-- `ProfileInfoForm` : nom, téléphone, e-mail (+ plaque et moto si `driver` est fourni). Prévient qu'un changement de véhicule entraîne une revalidation. Envoie à `/api/me/profile` puis `router.refresh()`.
+- `ProfileInfoForm` : nom, téléphone, e-mail (+ plaque, moto et **permis** si `driver` est fourni). Prévient qu'un changement de véhicule ou de permis entraîne une revalidation, et demande le permis aux chauffeurs inscrits avant ce champ. Envoie à `/api/me/profile` puis `router.refresh()`.
 - `PinForm` : PIN actuel + nouveau + confirmation → `/api/me/pin`.
 - Réutilisés aussi par l'admin dans `admin/AccountPage.tsx`.
 
@@ -142,11 +150,17 @@ Cycle ☀️ Clair → 🌙 Sombre → 🖥️ Auto. Enregistre le choix dans `l
 
 ---
 
-## `components/admin/` — l'espace administrateur
+## Administration (`Administration/src/`)
+
+### `components/LoginForm.tsx`
+
+Connexion réservée aux administrateurs : téléphone + PIN, envoyés avec `space: "admin"`. En cas de succès, `router.replace("/")`. Rappelle la commande de réinitialisation du PIN.
+
+### `components/admin/` — les écrans
 
 ### `AdminShell.tsx`
 
-- Menu latéral défini par le tableau **`NAV`** (sections Activité, Utilisateurs, Finances, Relation client, Paramètres). Pour ajouter un écran admin, on ajoute une ligne ici + un dossier dans `app/admin/`.
+- Menu latéral défini par le tableau **`NAV`** (sections Activité, Utilisateurs, Finances, Relation client, Paramètres). Pour ajouter un écran admin, on ajoute une ligne ici + un dossier dans `Administration/src/app/(espace)/`. Les adresses sont à la racine du site : `/`, `/courses`, `/chauffeurs`… « Se déconnecter » renvoie vers `/connexion`.
 - **Pastilles** : `badge` indique quel compteur de `/api/admin/counts` afficher. Rouge = action requise ; `info: true` = neutre (courses actives).
 - Sur mobile, le menu devient un **tiroir** qui se ferme à chaque changement de page.
 - Compteurs rafraîchis toutes les 15 s et après chaque action (événement `admin:changed`).
@@ -163,8 +177,8 @@ Cycle ☀️ Clair → 🌙 Sombre → 🖥️ Auto. Enregistre le choix dans `l
 |---|---|---|
 | `OverviewPage.tsx` | `/api/admin/overview` (toutes les 10 s) | — (liens vers les autres écrans). Tuiles, carte des chauffeurs en ligne (`MapView`), éléments à traiter, graphique 7 jours (`WeekChart`, barres en CSS), courses actives |
 | `RidesPage.tsx` | `/api/admin/rides?status=&q=` (10 s) | Annuler une course active, supprimer. Détail avec `Timeline` (heure de chaque étape) |
-| `DriversPage.tsx` | `/api/admin/drivers?status=&q=` | Valider, refuser/suspendre, réactiver, encaisser un abonnement, supprimer ; historique du chauffeur (`DriverRides`). « Refuser » un nouveau chauffeur le passe en réalité au statut `suspended` (il n'existe pas de statut « refusé ») |
-| `PassengersPage.tsx` | `/api/admin/passengers?status=&q=` | Bloquer, débloquer, supprimer ; historique (`PassengerRides`) |
+| `DriversPage.tsx` | `/api/admin/drivers?status=&q=` | Valider, refuser/suspendre, réactiver, encaisser un abonnement, supprimer ; historique du chauffeur (`DriverRides`). Colonne « Moto et permis » (permis « non renseigné » en orange s'il manque) ; recherche aussi par numéro de permis. « Refuser » un nouveau chauffeur le passe en réalité au statut `suspended` (il n'existe pas de statut « refusé ») |
+| `PassengersPage.tsx` | `/api/admin/passengers?status=&q=` | Bloquer, débloquer, supprimer ; historique (`PassengerRides`). Pastille « Invité » pour les passagers qui ont commandé sans compte |
 | `SubscriptionsPage.tsx` | `/api/admin/subscriptions` | Paiement reçu, refuser, supprimer |
 | `ReviewsPage.tsx` | `/api/admin/reviews` | Masquer/afficher, supprimer |
 | `MessagesPage.tsx` | `/api/admin/messages` | Marquer traité, supprimer ; lien « Répondre » (`replyLink` : `mailto:` si le contact contient un @, sinon `tel:` s'il y a au moins 8 chiffres) |
@@ -175,17 +189,17 @@ Cycle ☀️ Clair → 🌙 Sombre → 🖥️ Auto. Enregistre le choix dans `l
 
 ## `hooks/` — logique réutilisable
 
-### `useServerEvents(onEvent, onReconnect?)`
+### `useServerEvents(onEvent, onReconnect?, enabled = true)` (Application)
 
-Ouvre `new EventSource("/api/events")` une seule fois, transmet chaque événement (sauf les `ping`) à `onEvent`. Le navigateur **se reconnecte automatiquement** après une coupure ; à la reconnexion, `onReconnect` est appelé pour **resynchroniser** (des événements ont pu être manqués pendant la coupure).
+Avec `enabled = false` (visiteur pas encore connecté), aucune connexion n'est ouverte ; elle s'ouvre dès que `enabled` passe à `true`. Sinon : ouvre `new EventSource("/api/events")` une seule fois, transmet chaque événement (sauf les `ping`) à `onEvent`. Le navigateur **se reconnecte automatiquement** après une coupure ; à la reconnexion, `onReconnect` est appelé pour **resynchroniser** (des événements ont pu être manqués pendant la coupure).
 
 Astuce : les fonctions reçues sont rangées dans des `useRef`. Ainsi la connexion n'est **pas** rouverte à chaque nouvel affichage du composant, tout en appelant toujours la version la plus récente de `onEvent`.
 
-### `useAdminData<T>(path, intervalMs = 15000)`
+### `useAdminData<T>(path, intervalMs = 15000)` (Administration)
 
 Charge `path`, le recharge toutes les `intervalMs` et à chaque événement `admin:changed`. Renvoie `{ data, error, loading, refresh }`. Quand `path` change (filtre, recherche), recharge ; une réponse arrivée **après** un changement de filtre est ignorée (`current` ref), pour ne pas afficher de vieux résultats.
 
-### `useAdminAction()`
+### `useAdminAction()` (Administration)
 
 `run(key, path, body)` : envoie le `POST`, puis appelle `notifyAdminChange()`, qui déclenche l'événement navigateur `admin:changed` : **tous** les `useAdminData` de la page (liste, compteurs du menu) se rafraîchissent. `busy` contient la clé de l'action en cours (pour afficher le chargement sur le bon bouton).
 
@@ -200,7 +214,7 @@ Mesure en continu (`ResizeObserver`) la hauteur du panneau du bas **sur mobile**
 | Fichier | Contenu |
 |---|---|
 | `api.ts` | `api<T>(path, body?)` : sans `body` → `GET`, avec `body` → `POST` JSON. `cache: "no-store"`. Si la réponse est une erreur, lève une `Error` avec le message français du Backend, prête à être affichée. |
-| `server.ts` | **Uniquement côté serveur** (`import "server-only"`). `backendGet` (appel direct au Backend avec le cookie du visiteur ; `401`/`403` → `null`), `getSession` (renvoie `null` si le Backend est injoignable, au lieu de planter la page), `homeFor`, `requirePageUser`. |
+| `server.ts` | **Uniquement côté serveur** (`import "server-only"`). `backendGet` (appel direct au Backend avec le cookie du visiteur ; `401`/`403` → `null`), `getSession` (renvoie `null` si le Backend est injoignable, au lieu de planter la page), `homeFor` (un admin est renvoyé vers `ADMIN_URL`), `requirePageUser`. Dans l'Administration : `backendGet`, `getAdmin`, `requireAdmin`. |
 | `types.ts` | Types partagés avec le Backend + types de l'admin (`AdminDriver`, `AdminPassenger`, `AdminCounts`, `AdminOverview`, `DriverSubscription`, `PublicReviews`…). |
 | `pricing.ts` | Copie exacte de `Backend/src/pricing.ts`. |
 | `site.ts` | `CONTACT` (téléphone, WhatsApp, e-mail, adresse, horaires affichés sur l'accueil) et `CONTACT_SUBJECTS`. |

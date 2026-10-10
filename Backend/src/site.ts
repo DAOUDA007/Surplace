@@ -1,4 +1,4 @@
-// Copie partagée avec Frontend/src/lib/site.ts : garder les coordonnées identiques.
+// Copie partagée avec Application/src/lib/site.ts : garder les coordonnées identiques.
 /**
  * Coordonnées affichées dans les e-mails.
  * ⚠️ Valeurs PROVISOIRES : remplacez-les par les vraies coordonnées de SURPLACE.

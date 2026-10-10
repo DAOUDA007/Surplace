@@ -13,27 +13,31 @@ Surplace/
 │   ├── src/auth.ts        sessions par cookie
 │   ├── src/db.ts          schéma SQLite et comptes de démonstration
 │   └── data/              base de données (créée au premier lancement)
-└── Frontend/   Interface Next.js — port 3000
-    ├── src/app/           pages (accueil, connexion, passager, chauffeur, admin)
-    ├── src/components/    écrans et composants (carte Leaflet, formulaires…)
-    └── src/lib/           appels API, lieux de Korhogo, tarifs, coordonnées de contact
+├── Application/      Site public, passagers et chauffeurs (Next.js) — port 3000
+│   ├── src/app/           pages (accueil, connexion, inscription, passager, chauffeur)
+│   ├── src/components/    écrans et composants (carte Leaflet, formulaires…)
+│   └── src/lib/           appels API, lieux de Korhogo, tarifs, coordonnées de contact
+├── Administration/   Espace d'administration (Next.js) — port 3001
+│   ├── src/app/           connexion admin + écrans (vue d'ensemble, courses, chauffeurs…)
+│   └── src/components/admin/  écrans du tableau de bord
+└── Gbê/              Documentation détaillée du code
 ```
 
-Le Frontend relaie toutes les requêtes `/api/*` vers le Backend (voir `Frontend/next.config.ts`). Le navigateur ne parle donc qu'à un seul domaine, et le cookie de session y reste.
+Chaque site relaie ses requêtes `/api/*` vers le Backend (voir `next.config.ts`). Le navigateur ne parle donc qu'à un seul domaine par site, et le cookie de session y reste.
 
-`pricing.ts` et `types.ts` existent dans les deux dossiers : gardez-les identiques.
+`pricing.ts` et `types.ts` existent dans le Backend et dans les deux sites : gardez-les identiques.
 
 ## Démarrage
 
 Prérequis : Node.js 22.
 
 ```bash
-npm install            # à la racine (outil pour lancer les deux serveurs)
-npm run install:all    # dépendances du Backend et du Frontend
-npm run dev            # lance l'API (4000) et le site (3000)
+npm install            # à la racine (outil pour lancer les trois serveurs)
+npm run install:all    # dépendances du Backend, de l'Application et de l'Administration
+npm run dev            # lance l'API (4000), l'Application (3000) et l'Administration (3001)
 ```
 
-Ouvrez ensuite http://localhost:3000.
+Ouvrez ensuite http://localhost:3000 (passagers, chauffeurs) ou http://localhost:3001 (administration).
 
 En développement, chaque page est compilée à sa première visite (Turbopack) : comptez 20 à 30 s la première fois, puis l'affichage est quasi instantané.
 
@@ -45,7 +49,8 @@ En production (rapide dès la première visite) : `npm run build` puis `npm star
 |---------------|----------|--------------------------|-------------------------|
 | `PORT`        | Backend  | `4000`                   | Port de l'API           |
 | `SURPLACE_DB` | Backend  | `Backend/data/surplace.db` | Fichier SQLite        |
-| `BACKEND_URL` | Frontend | `http://localhost:4000`  | Adresse de l'API        |
+| `BACKEND_URL` | Application, Administration | `http://localhost:4000`  | Adresse de l'API        |
+| `ADMIN_URL`   | Application | `http://localhost:3001`  | Adresse du site d'administration |
 
 ## Comptes de démonstration (PIN `1234`)
 
@@ -54,6 +59,8 @@ En production (rapide dès la première visite) : `npm run build` puis `npm star
 | Passager  | 07 00 00 00 01 | 1 2 3 4       |
 | Chauffeur | 07 00 00 00 02 | 1 2 3 4       |
 | Admin     | 05 74 32 88 18 | 2 0 0 2       |
+
+Les administrateurs se connectent uniquement sur http://localhost:3001 ; passagers et chauffeurs uniquement sur http://localhost:3000. PIN admin oublié : `npm run reset-admin-pin -- 4821` dans `Backend/`.
 
 Pour tester une course complète, ouvrez le passager et le chauffeur dans deux navigateurs différents (ou une fenêtre privée). Le chauffeur passe en ligne, le passager commande, puis le chauffeur accepte. En mode démo, la moto se déplace toute seule sur la carte.
 
@@ -71,14 +78,14 @@ Pour tester une course complète, ouvrez le passager et le chauffeur dans deux n
 - Les chauffeurs voient les demandes dans un rayon de 10 km.
 - Un nouveau chauffeur doit être validé par l'administrateur avant de pouvoir passer en ligne.
 - **Temps réel** : Server-Sent Events (`/api/events`), avec une actualisation toutes les 15 s en secours.
-- **Cartes et adresses** : OpenStreetMap (tuiles et recherche Nominatim limitée à Korhogo). Les lieux fréquents sont dans `Frontend/src/lib/places.ts` : leurs coordonnées sont approximatives, à vérifier sur le terrain.
+- **Cartes et adresses** : OpenStreetMap (tuiles et recherche Nominatim limitée à Korhogo). Les lieux fréquents sont dans `Application/src/lib/places.ts` : leurs coordonnées sont approximatives, à vérifier sur le terrain.
 - **Thème** : clair, sombre ou automatique (selon l'appareil). Le bouton est sur la page d'accueil, les pages de connexion et dans le menu utilisateur. La carte s'assombrit aussi.
 - **Avis** : la page d'accueil affiche la note moyenne, la répartition des notes et les derniers commentaires (prénom + initiale du nom). L'admin peut masquer un avis.
-- **Contact** : coordonnées dans `Frontend/src/lib/site.ts` (**valeurs provisoires à remplacer**). Les messages du formulaire arrivent dans le tableau de bord admin (limite de 3 messages par 10 minutes et par adresse IP).
+- **Contact** : coordonnées dans `Application/src/lib/site.ts` (**valeurs provisoires à remplacer**). Les messages du formulaire arrivent dans le tableau de bord admin (limite de 3 messages par 10 minutes et par adresse IP).
 
 ## Administration
 
-L'espace admin (`/admin`) a un menu à gauche (tiroir sur mobile) et un écran par sujet. Des pastilles signalent ce qui attend une action.
+L'espace admin (dossier `Administration`, http://localhost:3001) a un menu à gauche (tiroir sur mobile) et un écran par sujet. Des pastilles signalent ce qui attend une action.
 
 | Écran | Rôle |
 |---|---|
@@ -113,7 +120,7 @@ Les actions sensibles (suspendre, bloquer, refuser, annuler, supprimer) demanden
 
 Tant que Gmail n'est pas configuré, les e-mails ne partent pas : ils sont enregistrés dans `Backend/data/emails/` (ouvrez-les dans un navigateur pour les prévisualiser). Un échec d'envoi ne bloque jamais l'inscription ; il est noté dans la console. Gmail limite l'envoi à environ 500 e-mails par jour.
 
-Le texte de l'e-mail se modifie dans `Backend/src/emails/welcome.ts`, et les coordonnées affichées dans `Backend/src/site.ts` (à garder identiques à `Frontend/src/lib/site.ts`).
+Le texte de l'e-mail se modifie dans `Backend/src/emails/welcome.ts`, et les coordonnées affichées dans `Backend/src/site.ts` (à garder identiques à `Application/src/lib/site.ts`).
 
 ## Pistes pour la suite
 

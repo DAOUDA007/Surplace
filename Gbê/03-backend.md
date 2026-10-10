@@ -45,13 +45,29 @@ const role = body.role === "driver" ? "driver" : "passenger";
 ```
 Toute valeur autre que `"driver"` devient `"passenger"`. On ne peut **pas** s'inscrire comme `admin` : sécurité par construction.
 
-Puis : validation de chaque champ → refus si le numéro existe (`409`) → dans une **transaction**, insertion dans `users` et, pour un chauffeur, dans `drivers` (statut `pending` par défaut) → création de la session → e-mail de bienvenue en arrière-plan → renvoi de `{ redirect: "/passager" }` ou `"/chauffeur"`.
+Puis : validation de chaque champ → **cas de l'invité** : si la personne est déjà connectée en passager invité et s'inscrit comme passager, son compte invité est **transformé** en vrai compte (`convertGuest`) et ses courses sont conservées → sinon refus si le numéro existe (`409`) → dans une **transaction**, insertion dans `users` et, pour un chauffeur, dans `drivers` avec plaque, modèle et **numéro de permis** (`validateLicense`), statut `pending` par défaut → création de la session → e-mail de bienvenue en arrière-plan → renvoi de `{ redirect: "/passager" }` ou `"/chauffeur"`.
 
-La **transaction** (`db.transaction(() => {...})()`) garantit que si l'insertion dans `drivers` échoue (plaque manquante), l'utilisateur n'est pas créé à moitié.
+La **transaction** (`db.transaction(() => {...})()`) garantit que si l'insertion dans `drivers` échoue (permis manquant), l'utilisateur n'est pas créé à moitié.
 
 ### La connexion (`POST /auth/login`)
 
 Le même message `"Numéro ou code PIN incorrect."` est renvoyé que le numéro existe ou non : on ne révèle pas quels numéros sont inscrits. Un compte bloqué reçoit `403`.
+
+**Cloisonnement des deux sites** : le formulaire de l'Administration envoie `space: "admin"`.
+- `space: "admin"` + compte non admin → `403 Accès réservé aux administrateurs SURPLACE.`
+- sans `space` (Application) + compte admin → `403 Les administrateurs se connectent sur l'espace d'administration.`
+
+La vérification se fait **avant** la création de la session : aucun cookie n'est posé en cas de refus.
+
+### La commande sans compte (`POST /rides/guest`)
+
+Reçoit `name`, `phone`, `pickup`, `dropoff`.
+1. Refuse si la personne est déjà connectée (`409`) : elle doit utiliser `POST /rides`.
+2. **Limite anti-abus** : 5 commandes sans compte par adresse IP et par heure (`guestOrdersByIp`, en mémoire) → `429` au-delà.
+3. Dans **une transaction** : `createGuestPassenger` (crée le passager invité) puis `createRide`. Si la course est invalide (trajet trop court, trop long…), l'erreur annule aussi la création du compte : pas de compte « fantôme ».
+4. Crée la session (cookie) : l'invité est désormais reconnu sur ce téléphone.
+
+Un invité ne peut pas modifier son profil ni son PIN (`/me/profile`, `/me/pin` → `403`, constante `GUEST_PROFILE_ERROR`) : il crée d'abord son compte via l'inscription.
 
 ### Le temps réel (`GET /events`)
 
@@ -118,9 +134,10 @@ Chaque fonction **renvoie la valeur nettoyée** ou **lève une `HttpError(400)`*
 | `optionalEmail` | Vide → `null` ; sinon minuscules + format vérifié (120 caractères max). |
 | `validatePin` | Exactement 4 chiffres. |
 | `requiredText` | Texte non vide, coupé à une longueur maximale (80 par défaut). |
+| `validateLicense` | Numéro de permis de conduire : obligatoire, 5 à 30 caractères, mis en majuscules. |
 | `parseId` | Transforme `"12"` (paramètre d'URL) en nombre entier positif. |
 
-Règle d'or : **ne jamais faire confiance aux données venant du navigateur**. Même si le formulaire du Frontend vérifie déjà, le Backend revérifie.
+Règle d'or : **ne jamais faire confiance aux données venant du navigateur**. Même si le formulaire de l'Application vérifie déjà, le Backend revérifie.
 
 ---
 
@@ -154,9 +171,9 @@ Fonctions :
 |---|---|
 | `createSession(res, userId)` | Crée le jeton, la ligne en base et le cookie |
 | `destroySession(req, res)` | Supprime la ligne et efface le cookie (déconnexion) |
-| `getCurrentUser(req)` | Lit le cookie et renvoie l'utilisateur **si** la session n'est pas expirée, le compte n'est pas bloqué ni supprimé. Sinon `null`. Ajoute `isPrincipal` seulement pour un admin. |
+| `getCurrentUser(req)` | Lit le cookie et renvoie l'utilisateur **si** la session n'est pas expirée, le compte n'est pas bloqué ni supprimé. Sinon `null`. Ajoute `isPrincipal` pour un admin et `isGuest: true` pour un passager invité. Le téléphone renvoyé est `COALESCE(guest_phone, phone)` : le vrai numéro, invité ou non. |
 | `requireUser(req, role?)` | Comme `getCurrentUser` mais lève `401` si personne n'est connecté et `403` si le rôle ne correspond pas. C'est **la** protection de chaque route. |
-| `homeFor(role)` | Adresse d'accueil selon le rôle (`/passager`, `/chauffeur`, `/admin`). Existe aussi dans `Frontend/src/lib/server.ts`. |
+| `homeFor(role)` | Adresse d'accueil après connexion : `/passager`, `/chauffeur`, ou `/` pour un admin (la racine du site d'Administration). L'Application a sa propre version dans `lib/server.ts`, qui renvoie un admin vers `ADMIN_URL`. |
 
 **Pourquoi des sessions en base plutôt qu'un JWT ?** Une session en base peut être **révoquée immédiatement** : bloquer un compte supprime ses lignes `sessions` et l'utilisateur est déconnecté à sa prochaine requête.
 
@@ -275,7 +292,7 @@ Avant d'accepter, le chauffeur doit : être `approved`, avoir un **abonnement ac
 
 | Fonction | Rôle |
 |---|---|
-| `getDriverProfile(userId)` | Profil du chauffeur (plaque, moto, statut, en ligne, position, note, abonnement). Appelle d'abord `enforceSubscription` pour mettre hors ligne un chauffeur dont l'abonnement vient d'expirer. |
+| `getDriverProfile(userId)` | Profil du chauffeur (plaque, moto, permis, statut, en ligne, position, note, abonnement). Appelle d'abord `enforceSubscription` pour mettre hors ligne un chauffeur dont l'abonnement vient d'expirer. |
 | `setDriverOnline(user, online)` | Passer en ligne exige d'être validé **et** abonné. Passer hors ligne est refusé pendant une course. |
 | `updateDriverLocation(user, lat, lng)` | Enregistre la position et, si une course est en cours, envoie l'événement `location` **directement au passager** (sans passer par la base pour lui). |
 | `setDriverStatus(userId, status)` | Admin : valider (`approved`) ou suspendre (`suspended`, ce qui met aussi hors ligne). Prévient le chauffeur (`profile`) et les autres chauffeurs. |
@@ -307,7 +324,9 @@ Statuts d'une ligne `subscriptions` : `pending` (demandée) → `paid` (payée) 
 
 | Fonction | Rôle |
 |---|---|
-| `updateProfile(user, body)` | Modifie nom, téléphone, e-mail (et plaque/moto pour un chauffeur). **Si un chauffeur validé change de moto, il repasse `pending`** et hors ligne : l'équipe doit vérifier le nouveau véhicule. Renvoie `{ revalidation: true }` dans ce cas. |
+| `updateProfile(user, body)` | Modifie nom, téléphone, e-mail (et plaque, moto, **permis** pour un chauffeur). **Si un chauffeur validé change de moto ou de permis, il repasse `pending`** et hors ligne : l'équipe doit revérifier. Renvoie `{ revalidation: true }` dans ce cas. |
+| `createGuestPassenger(body)` | Crée un **passager invité** : `guest = 1`, vrai numéro dans `guest_phone`, et dans `phone` une valeur fictive unique (`invite-…`). Ainsi le numéro ne « réserve » aucun compte, et **personne ne peut retrouver les courses d'un invité en connaissant son numéro** : seul le téléphone qui a commandé (cookie) y a accès. PIN aléatoire inconnu de tous. |
+| `convertGuest(userId, body)` | Transforme l'invité en vrai compte : vrai numéro dans `phone` (s'il est libre), PIN choisi, `guest = 0`. Les courses restent attachées au même compte. |
 | `changePin(userId, current, new)` | Exige l'ancien PIN correct. |
 | `deleteMemberAccount(userId, role)` | Supprime un passager/chauffeur. **Sans courses** : effacement complet. **Avec courses** : **anonymisation** (nom → « Passager supprimé », téléphone → `supprime-<id>` pour libérer le vrai numéro, PIN aléatoire, `blocked = 1`, `deleted_at` rempli). Les courses restent pour l'historique et les statistiques. Refusé s'il y a une course en cours. |
 | `requirePrincipal(user)` | Lève `403` si l'admin n'est pas l'**administrateur principal**. |
@@ -353,7 +372,7 @@ La date du jour est calculée en UTC (`toISOString().slice(0, 10)`) : c'est corr
 
 ## Les fichiers partagés : `types.ts`, `pricing.ts`, `site.ts`
 
-Ces fichiers existent en **deux exemplaires** : `Backend/src/` et `Frontend/src/lib/`.
+Ces fichiers existent en **plusieurs exemplaires** : `Backend/src/`, `Application/src/lib/` et (pour `types.ts` et `pricing.ts`) `Administration/src/lib/`.
 
 **Pourquoi deux copies ?** Les deux projets sont indépendants (chacun son `package.json`). Les partager vraiment nécessiterait un troisième paquet commun, ce qui complique l'installation. Pour un projet de cette taille, la copie est un compromis acceptable, à condition de **les garder synchronisées** (un commentaire en tête de chaque fichier le rappelle).
 
@@ -363,6 +382,23 @@ Ces fichiers existent en **deux exemplaires** : `Backend/src/` et `Frontend/src/
   - `haversineKm(a, b)` : distance à vol d'oiseau entre deux points GPS (formule de haversine, rayon terrestre 6 371 km).
   - `estimateTrip(a, b)` : distance ×1,3 arrondie au dixième, prix, durée estimée (3 min minimum).
   - `formatFcfa(n)` : `1500` → `"1 500 FCFA"`.
-  - Le Frontend l'utilise pour **afficher** le prix avant la commande ; le Backend pour **décider** du prix réel. Même formule des deux côtés = l'utilisateur paie exactement ce qu'il a vu.
-- **`types.ts`** : la partie commune est identique ; la version Frontend ajoute des types propres à l'admin et aux abonnements (`AdminDriver`, `DriverSubscription`, etc.).
+  - L'Application l'utilise pour **afficher** le prix avant la commande ; le Backend pour **décider** du prix réel. Même formule des deux côtés = l'utilisateur paie exactement ce qu'il a vu.
+- **`types.ts`** : la partie commune est identique ; les versions des sites ajoutent des types propres à l'admin et aux abonnements (`AdminDriver`, `DriverSubscription`, etc.).
 - **`site.ts`** : coordonnées de contact. ⚠️ Les deux versions **ne sont pas identiques** actuellement (voir [09-modifier-et-points-d-attention.md](09-modifier-et-points-d-attention.md)).
+
+---
+
+## `scripts/reset-admin-pin.ts` — PIN administrateur oublié
+
+Outil lancé **à la main** dans le dossier `Backend` :
+
+```bash
+npm run reset-admin-pin -- 4821
+```
+
+1. Vérifie que le nouveau PIN a 4 chiffres.
+2. Trouve l'**administrateur principal** (`is_principal = 1`).
+3. Remplace l'empreinte de son PIN (`hashPin`), le débloque s'il était bloqué, ferme toutes ses sessions.
+4. Affiche son nom et son numéro de connexion.
+
+**Pourquoi un script et pas un bouton « PIN oublié » ?** Les PIN sont hachés : on ne peut pas les relire, seulement en définir un nouveau. Sans envoi de code par SMS, n'importe qui pourrait réinitialiser le PIN d'un autre. Le script exige d'avoir accès au **serveur** lui-même, ce qui prouve qu'on est l'exploitant.

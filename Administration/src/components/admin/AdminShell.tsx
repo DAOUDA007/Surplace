@@ -19,40 +19,40 @@ interface NavItem {
 }
 
 const NAV: { title?: string; items: NavItem[] }[] = [
-  { items: [{ href: "/admin", label: "Vue d'ensemble", icon: "📊" }] },
+  { items: [{ href: "/", label: "Vue d'ensemble", icon: "📊" }] },
   {
     title: "Activité",
-    items: [{ href: "/admin/courses", label: "Courses", icon: "🏍️", badge: "activeRides", info: true }],
+    items: [{ href: "/courses", label: "Courses", icon: "🏍️", badge: "activeRides", info: true }],
   },
   {
     title: "Utilisateurs",
     items: [
-      { href: "/admin/chauffeurs", label: "Chauffeurs", icon: "🪪", badge: "driversPending" },
-      { href: "/admin/passagers", label: "Passagers", icon: "🙋" },
+      { href: "/chauffeurs", label: "Chauffeurs", icon: "🪪", badge: "driversPending" },
+      { href: "/passagers", label: "Passagers", icon: "🙋" },
     ],
   },
   {
     title: "Finances",
-    items: [{ href: "/admin/abonnements", label: "Abonnements", icon: "💳", badge: "subscriptionsPending" }],
+    items: [{ href: "/abonnements", label: "Abonnements", icon: "💳", badge: "subscriptionsPending" }],
   },
   {
     title: "Relation client",
     items: [
-      { href: "/admin/avis", label: "Avis", icon: "⭐" },
-      { href: "/admin/messages", label: "Messages", icon: "✉️", badge: "messagesUnread" },
+      { href: "/avis", label: "Avis", icon: "⭐" },
+      { href: "/messages", label: "Messages", icon: "✉️", badge: "messagesUnread" },
     ],
   },
   {
     title: "Paramètres",
     items: [
-      { href: "/admin/administrateurs", label: "Administrateurs", icon: "🛡️" },
-      { href: "/admin/compte", label: "Mon compte", icon: "⚙️" },
+      { href: "/administrateurs", label: "Administrateurs", icon: "🛡️" },
+      { href: "/compte", label: "Mon compte", icon: "⚙️" },
     ],
   },
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
 export function AdminShell({ user, children }: { user: User; children: React.ReactNode }) {
@@ -66,7 +66,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
 
   async function logout() {
     await api("/api/auth/logout", {}).catch(() => null);
-    router.replace("/");
+    router.replace("/connexion");
     router.refresh();
   }
 
@@ -76,7 +76,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-5 py-5">
-        <Logo href="/admin" />
+        <Logo href="/" />
         <span className="rounded-full bg-contrast px-2 py-0.5 text-[11px] font-bold text-on-contrast">Admin</span>
       </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">

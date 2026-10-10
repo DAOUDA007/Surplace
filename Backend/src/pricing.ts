@@ -1,4 +1,4 @@
-// Copie partagée Frontend/Backend : garder les deux fichiers identiques.
+// Copie partagée Backend / Application / Administration : garder les trois fichiers identiques.
 import type { LatLng } from "./types";
 
 // Grille tarifaire en FCFA (modifiable ici).

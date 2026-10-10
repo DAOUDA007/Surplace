@@ -59,6 +59,8 @@ Pour **explorer** la base, installez par exemple « DB Browser for SQLite » ou 
 | `blocked` | 0/1 | Compte bloqué (connexion impossible) |
 | `is_principal` | 0/1 | Administrateur principal (un seul) |
 | `deleted_at` | texte, facultatif | Rempli si le compte a été anonymisé |
+| `guest` | 0/1 | Passager **invité** : a commandé sans créer de compte |
+| `guest_phone` | texte, facultatif | Vrai numéro d'un invité. Pour un invité, `phone` contient une valeur fictive unique (`invite-…`) : le numéro ne bloque pas une future inscription et ne permet pas de retrouver ses courses. Le code lit toujours `COALESCE(guest_phone, phone)`. |
 
 **Pourquoi une seule table pour les trois rôles ?** Connexion, session, profil et PIN fonctionnent pareil pour tous. Les informations propres aux chauffeurs sont dans une table à part.
 
@@ -68,6 +70,7 @@ Pour **explorer** la base, installez par exemple « DB Browser for SQLite » ou 
 |---|---|
 | `user_id` | Clé primaire **et** lien vers `users.id` (relation 1 à 1). `ON DELETE CASCADE` : supprimer l'utilisateur supprime sa ligne chauffeur. |
 | `plate`, `moto_model` | Immatriculation et modèle de moto |
+| `license_number` | Numéro du permis de conduire (vide pour les chauffeurs inscrits avant ce champ) |
 | `status` | `pending` (à valider), `approved` (validé), `suspended` (suspendu) |
 | `is_online` | 0/1 : disponible pour recevoir des courses |
 | `lat`, `lng`, `location_at` | Dernière position GPS connue et sa date |
@@ -132,7 +135,7 @@ Toutes les dates sont stockées en **texte ISO 8601 UTC**, par exemple `2026-10-
 Quand le code évolue et qu'une colonne est ajoutée, `CREATE TABLE IF NOT EXISTS` ne modifie **pas** une table déjà existante. `migrate()` comble ce manque :
 
 1. Lit les colonnes existantes avec `PRAGMA table_info(...)`.
-2. Ajoute celles qui manquent avec `ALTER TABLE ... ADD COLUMN` : `rides.review_hidden`, `users.blocked`, `users.email`, `users.is_principal`, `users.deleted_at`, `drivers.subscription_until`.
+2. Ajoute celles qui manquent avec `ALTER TABLE ... ADD COLUMN` : `rides.review_hidden`, `users.blocked`, `users.email`, `users.is_principal`, `users.deleted_at`, `users.guest`, `users.guest_phone`, `drivers.license_number`, `drivers.subscription_until`.
 3. S'assure qu'il existe **toujours un administrateur principal** (à défaut, le plus ancien admin actif le devient).
 4. Lors de l'ajout de `subscription_until`, offre un an au chauffeur de démonstration.
 5. Corrige une ancienne version qui plaçait les chauffeurs à **Abidjan** (latitude < 7) : ils sont replacés au centre de Korhogo.
@@ -150,6 +153,8 @@ Exécuté seulement si **aucun admin n'existe** (donc une seule fois, sur une ba
 | Chauffeur (validé, 1 an d'abonnement, au centre de Korhogo) | Moussa Traoré | 07 00 00 00 02 — moto Haojue 125, plaque AB 1234 CI |
 
 > Le README indique un admin `05 74 32 88 18` / PIN `2002` : c'est sans doute le compte admin de démonstration modifié ensuite via « Mon compte ». Sur une **base neuve**, c'est bien `07 00 00 00 00` / `1234` qui est créé.
+
+**PIN administrateur oublié** : `npm run reset-admin-pin -- 4821` dans `Backend/` (voir [03-backend.md](03-backend.md)).
 
 **Repartir de zéro** : arrêtez les serveurs, supprimez `Backend/data/surplace.db` (et `-wal`, `-shm`), relancez `npm run dev`. ⚠️ Toutes les données sont perdues.
 

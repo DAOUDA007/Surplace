@@ -1,23 +1,23 @@
 # 5. Toutes les routes de l'API
 
 Toutes déclarées dans `Backend/src/server.ts`, toutes préfixées par `/api`.
-Depuis le navigateur, on les appelle sur le port du site (`http://localhost:3000/api/...`) ; Next.js les relaie au Backend.
+Depuis le navigateur, on les appelle sur le port du site visité (`http://localhost:3000/api/...` pour l'Application, `http://localhost:3001/api/...` pour l'Administration) ; Next.js les relaie au Backend.
 
 **Légende « Accès »** : 🌐 public · 👤 tout utilisateur connecté · 🙋 passager · 🏍️ chauffeur · 🛡️ admin · 👑 admin principal
 
 Toutes les réponses sont en JSON. En cas d'erreur : `{ "error": "message en français" }` avec le code HTTP adapté.
 
-Convention : les lectures utilisent `GET`, **toutes** les modifications utilisent `POST` (y compris les suppressions, avec `/delete` dans l'adresse). C'est un choix de simplicité : la fonction `api()` du Frontend n'a besoin que de deux méthodes.
+Convention : les lectures utilisent `GET`, **toutes** les modifications utilisent `POST` (y compris les suppressions, avec `/delete` dans l'adresse). C'est un choix de simplicité : la fonction `api()` des sites n'a besoin que de deux méthodes.
 
 ## Authentification et profil
 
 | Méthode | Adresse | Accès | Corps envoyé | Réponse / Effet | Code métier |
 |---|---|---|---|---|---|
-| POST | `/auth/register` | 🌐 | `role, name, phone, pin, email?` (+ `plate, motoModel` si chauffeur) | Crée le compte, connecte, `{ redirect }` | `server.ts` |
-| POST | `/auth/login` | 🌐 | `phone, pin` | Connecte, `{ redirect }` | `server.ts` |
+| POST | `/auth/register` | 🌐 | `role, name, phone, pin, email?` (+ `plate, motoModel, licenseNumber` si chauffeur) | Crée le compte, connecte, `{ redirect }`. Si l'appelant est un **invité**, transforme son compte au lieu d'en créer un | `server.ts` |
+| POST | `/auth/login` | 🌐 | `phone, pin, space?` | Connecte, `{ redirect }`. `space: "admin"` = Administration (admins seulement) ; sans `space` = Application (admins refusés) | `server.ts` |
 | POST | `/auth/logout` | 🌐 | — | Déconnecte, `{ redirect: "/" }` | `auth.ts › destroySession` |
 | GET | `/me` | 👤 | — | `{ user, driver }` (`driver` = profil chauffeur ou `null`) | `drivers.ts › getDriverProfile` |
-| POST | `/me/profile` | 👤 | `name, phone, email?` (+ `plate, motoModel`) | `{ revalidation }` | `accounts.ts › updateProfile` |
+| POST | `/me/profile` | 👤 | `name, phone, email?` (+ `plate, motoModel, licenseNumber`) | `{ revalidation }`. Refusé (403) pour un invité | `accounts.ts › updateProfile` |
 | POST | `/me/pin` | 👤 | `currentPin, newPin` | `{ ok }` | `accounts.ts › changePin` |
 
 ## Courses
@@ -26,6 +26,7 @@ Convention : les lectures utilisent `GET`, **toutes** les modifications utilisen
 |---|---|---|---|---|---|
 | GET | `/rides` | 👤 | — | `{ rides }` : 200 dernières courses de l'utilisateur | `rides.ts › listRides` |
 | POST | `/rides` | 🙋 | `pickup: {label,lat,lng}, dropoff: {...}` | `{ ride }` : course créée | `rides.ts › createRide` |
+| POST | `/rides/guest` | 🌐 (non connecté) | `name, phone, pickup, dropoff` | Crée un passager invité + sa course, le connecte sur cet appareil, `{ ride }`. 5 max / heure / IP | `accounts.ts › createGuestPassenger` + `rides.ts › createRide` |
 | GET | `/rides/current` | 👤 | — | `{ ride, rideToRate }` : course en cours, et course à noter (passager) | `rides.ts › getActiveRide, getRideToRate` |
 | POST | `/rides/:id/action` | 🙋🏍️ | `action`: `accept` · `arrive` · `start` · `complete` · `cancel` | `{ ride }` | `rides.ts › applyAction` |
 | POST | `/rides/:id/rate` | 🙋 | `rating` (1–5), `comment?` | `{ ride }` | `rides.ts › rateRide` |
@@ -93,4 +94,5 @@ Les paramètres d'URL s'écrivent ainsi : `/api/admin/rides?status=active&q=Kon�
 Le Backend étant lancé, dans un navigateur :
 - `http://localhost:4000/api/health` → `{"ok":true}`
 - `http://localhost:3000/api/public/reviews` → les avis (passe par le proxy Next.js)
+- `http://localhost:3001/api/admin/counts` → `401` sans session admin (Administration)
 - `http://localhost:3000/api/me` → `401` si vous n'êtes pas connecté, vos infos sinon (le cookie est envoyé automatiquement)

@@ -71,9 +71,9 @@ export function OverviewPage() {
   const { stats, days, onlineDrivers, activeRides } = data;
 
   const todo = [
-    { count: stats.driversPending, label: "chauffeur(s) à valider", href: "/admin/chauffeurs?statut=pending", icon: "🪪" },
-    { count: stats.subscriptionsPending, label: "paiement(s) d'abonnement à confirmer", href: "/admin/abonnements", icon: "💳" },
-    { count: stats.messagesUnread, label: "message(s) non traité(s)", href: "/admin/messages", icon: "✉️" },
+    { count: stats.driversPending, label: "chauffeur(s) à valider", href: "/chauffeurs?statut=pending", icon: "🪪" },
+    { count: stats.subscriptionsPending, label: "paiement(s) d'abonnement à confirmer", href: "/abonnements", icon: "💳" },
+    { count: stats.messagesUnread, label: "message(s) non traité(s)", href: "/messages", icon: "✉️" },
   ].filter((t) => t.count > 0);
 
   const markers: MapMarker[] = [
@@ -165,7 +165,7 @@ export function OverviewPage() {
         title="Courses en cours"
         className="mt-6"
         action={
-          <Link href="/admin/courses?statut=active" className="text-sm font-semibold text-brand">
+          <Link href="/courses?statut=active" className="text-sm font-semibold text-brand">
             Tout voir →
           </Link>
         }

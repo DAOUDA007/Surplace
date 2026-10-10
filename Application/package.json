@@ -1,8 +1,8 @@
 {
-  "name": "surplace-frontend",
+  "name": "surplace-application",
   "version": "0.1.0",
   "private": true,
-  "description": "SURPLACE â€” interface web (Next.js)",
+  "description": "SURPLACE — application web des passagers et des chauffeurs (Next.js, port 3000)",
   "scripts": {
     "dev": "next dev --turbopack -p 3000",
     "dev:https": "next dev --turbopack --experimental-https -p 3000",

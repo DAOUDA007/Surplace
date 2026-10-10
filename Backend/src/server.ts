@@ -55,7 +55,7 @@ const GUEST_PROFILE_ERROR = "Créez d'abord votre compte (menu ☰ › Créer mo
 
 const app = express();
 app.disable("x-powered-by");
-// Les requêtes arrivent via le proxy du Frontend : on lit l'IP réelle dans X-Forwarded-For.
+// Les requêtes arrivent via le proxy des sites (Application, Administration) : on lit l'IP réelle dans X-Forwarded-For.
 app.set("trust proxy", "loopback");
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
@@ -122,6 +122,14 @@ api.post(
     }
     if (user.blocked) {
       throw new HttpError(403, "Ce compte a été suspendu. Contactez le support SURPLACE.");
+    }
+    // Deux sites distincts : l'espace d'administration (space = "admin") et l'application (passagers, chauffeurs).
+    const adminSpace = req.body?.space === "admin";
+    if (adminSpace && user.role !== "admin") {
+      throw new HttpError(403, "Accès réservé aux administrateurs SURPLACE.");
+    }
+    if (!adminSpace && user.role === "admin") {
+      throw new HttpError(403, "Les administrateurs se connectent sur l'espace d'administration.");
     }
     createSession(res, user.id);
     return { redirect: homeFor(user.role) };

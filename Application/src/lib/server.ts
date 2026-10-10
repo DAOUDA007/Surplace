@@ -26,8 +26,11 @@ export async function getSession() {
   }
 }
 
+/** Adresse du site d'administration (dossier Administration), vers lequel on renvoie un administrateur. */
+const ADMIN_URL = (process.env.ADMIN_URL ?? "http://localhost:3001").replace(/\/$/, "");
+
 export function homeFor(role: Role) {
-  return role === "driver" ? "/chauffeur" : role === "admin" ? "/admin" : "/passager";
+  return role === "driver" ? "/chauffeur" : role === "admin" ? ADMIN_URL : "/passager";
 }
 
 /** Redirige vers la connexion, ou vers l'espace adapté si le rôle ne correspond pas. */

@@ -6,6 +6,6 @@ next-env.d.ts
 Backend/data/*.db
 Backend/data/*.db-*
 .env*.local
-Frontend/certificates/
+Application/certificates/
 Backend/.env
 Backend/data/emails/

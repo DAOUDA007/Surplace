@@ -57,6 +57,7 @@ export function requireUser(req: Request, role?: Role): User {
   return user;
 }
 
+/** Page d'accueil après connexion. Les administrateurs ont leur propre site : « / » y est la vue d'ensemble. */
 export function homeFor(role: Role) {
-  return role === "driver" ? "/chauffeur" : role === "admin" ? "/admin" : "/passager";
+  return role === "driver" ? "/chauffeur" : role === "admin" ? "/" : "/passager";
 }

@@ -1,4 +1,4 @@
-// Types partagés Frontend/Backend : garder les définitions communes identiques.
+// Types partagés Backend / Application / Administration : garder les définitions communes identiques.
 export type Role = "passenger" | "driver" | "admin";
 
 export interface User {

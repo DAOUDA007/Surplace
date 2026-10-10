@@ -16,12 +16,15 @@ npm run dev  (racine)
      │          4. server.ts   déclare les routes, écoute le port 4000
      │          → « SURPLACE API prête sur http://localhost:4000 »
      │
-     └─ [web]  npm run dev --prefix Frontend  →  next dev --turbopack -p 3000
-                lit next.config.ts (règle /api/* → localhost:4000), écoute le port 3000
-                Les pages sont compilées à leur première visite (20 à 30 s la 1re fois).
+     ├─ [app]   npm run dev --prefix Application    →  next dev --turbopack -p 3000
+     │           lit next.config.ts (règle /api/* → localhost:4000), écoute le port 3000
+     │
+     └─ [admin] npm run dev --prefix Administration →  next dev --turbopack -p 3001
+                 même règle /api/*, écoute le port 3001
+                 Les pages sont compilées à leur première visite (de quelques secondes à plusieurs minutes selon la machine).
 ```
 
-`tsx watch` redémarre le Backend à chaque sauvegarde d'un fichier `Backend/src/`. Next.js met à jour la page ouverte à chaque sauvegarde d'un fichier `Frontend/src/` (« Fast Refresh »).
+`tsx watch` redémarre le Backend à chaque sauvegarde d'un fichier `Backend/src/`. Chaque site Next.js met à jour la page ouverte à chaque sauvegarde d'un de ses fichiers (« Fast Refresh »).
 
 ---
 
@@ -32,7 +35,7 @@ NAVIGATEUR  /inscription
  │  RegisterForm (components/AuthForms.tsx) : l'utilisateur remplit et valide
  │  useSubmit → api("/api/auth/register", { role, name, phone, email, pin })      lib/api.ts
  ▼
-NEXT.JS  next.config.ts : /api/auth/register → http://localhost:4000/api/auth/register
+NEXT.JS (Application)  next.config.ts : /api/auth/register → http://localhost:4000/api/auth/register
  ▼
 BACKEND  server.ts  POST /auth/register
  │  role ≠ "driver" → "passenger"
@@ -64,7 +67,7 @@ NEXT.JS (serveur)
  │     BACKEND  GET /me → requireUser → getCurrentUser (sessions JOIN users)    auth.ts
  │        ◄── { user, driver: null }
  │     pas de session → redirect("/connexion")
- │     rôle driver/admin → redirect("/chauffeur" ou "/admin")
+ │     rôle driver → redirect("/chauffeur") ; admin → redirect(ADMIN_URL, site d'Administration)
  │  renvoie <PassengerApp user={user} />
  ▼
 NAVIGATEUR  reçoit le HTML + le JavaScript de PassengerApp
@@ -175,14 +178,14 @@ La note apparaît ensuite dans la moyenne du chauffeur et, avec commentaire, sur
 
 ## E. Un nouveau chauffeur, de l'inscription à sa première course
 
-1. **Inscription** avec plaque et moto → ligne `drivers` en statut `pending`, sans abonnement.
+1. **Inscription** avec plaque, moto et **numéro de permis** → ligne `drivers` en statut `pending`, sans abonnement.
 2. `/chauffeur` affiche `AccountPending` : « en attente de validation ».
-3. **Admin** → `/admin/chauffeurs` (pastille rouge « 1 ») → « Valider » → `POST /api/admin/drivers/:id { status: "approved" }` → `setDriverStatus` → événement `profile` au chauffeur.
+3. **Admin** (site d'Administration) → `/chauffeurs` (pastille rouge « 1 ») → vérifie la moto et le permis (colonne « Moto et permis ») → « Valider » → `POST /api/admin/drivers/:id { status: "approved" }` → `setDriverStatus` → événement `profile` au chauffeur.
 4. L'écran du chauffeur se met à jour **instantanément** (`loadProfile`) : il voit l'écran normal, mais « Passer en ligne » renverra `402` tant qu'il n'est pas abonné.
 5. **Abonnement** : le chauffeur ouvre « Mon abonnement », choisit Mensuel → `POST /api/driver/subscription { plan: "monthly" }` → ligne `pending`.
 6. Il paie SURPLACE (espèces, Mobile Money) **en dehors de l'application**.
-7. **Admin** → `/admin/abonnements` → « Paiement reçu » → `reviewSubscriptionRequest(id, true)` → `extend()` : `paid`, `subscription_until` = maintenant + 1 mois → événement `profile`.
-   *(Variante : depuis `/admin/chauffeurs`, « + Encaisser un abonnement » → `recordSubscriptionPayment`, sans demande préalable.)*
+7. **Admin** → `/abonnements` → « Paiement reçu » → `reviewSubscriptionRequest(id, true)` → `extend()` : `paid`, `subscription_until` = maintenant + 1 mois → événement `profile`.
+   *(Variante : depuis `/chauffeurs`, « + Encaisser un abonnement » → `recordSubscriptionPayment`, sans demande préalable.)*
 8. Le chauffeur peut passer en ligne et accepter des courses.
 9. **À l'expiration** : la prochaine fois que son profil est lu (`getDriverProfile` → `enforceSubscription`), il est mis hors ligne, sauf s'il est en pleine course.
 
@@ -238,10 +241,55 @@ Inscription avec e-mail
 ## I. Le formulaire de contact
 
 ```
-Accueil #contact → ContactForm → POST /api/public/contact { name, phone, subject, message }
+Application, accueil #contact → ContactForm → POST /api/public/contact { name, phone, subject, message }
 BACKEND createContactMessage(req.ip, body)                                           public.ts
           req.ip = vraie IP du visiteur grâce à "trust proxy" (server.ts)
           plus de 3 messages en 10 min pour cette IP → 429
           INSERT INTO contact_messages
-Admin : pastille « Messages » (+1) → /admin/messages → Répondre / Marquer traité / Supprimer
+Administration : pastille « Messages » (+1) → /messages → Répondre / Marquer traité / Supprimer
 ```
+
+---
+
+## J. Commande sans compte (passager invité)
+
+```
+Accueil → « Commander une moto » → /passager                     (Application/src/app/passager/page.tsx)
+  getSession() → null : PassengerApp reçoit user = null
+  pas d'appel à /api/rides/current, pas de flux temps réel (signedIn = false)
+  GPS, recherche de lieux, prix estimé : fonctionnent sans compte
+
+« Commander » → le formulaire guestForm apparaît : nom + numéro
+« Confirmer » → POST /api/rides/guest { name, phone, pickup, dropoff }
+BACKEND  server.ts
+   déjà connecté ? → 409 ;  plus de 5 commandes invitées / heure pour cette IP ? → 429
+   transaction :
+     createGuestPassenger()   users : guest = 1, guest_phone = vrai numéro, phone = « invite-… »   accounts.ts
+     createRide()             course 'requested' + événement aux chauffeurs                       rides.ts
+     (si la course est refusée, le compte invité est annulé aussi)
+   createSession() → cookie : l'invité est reconnu sur ce téléphone
+   ◄── { ride }
+PassengerApp : setRide(ride) → « Recherche d'un chauffeur… » ; router.refresh()
+   → la page reçoit maintenant user (isGuest: true) : suivi en direct, menu « Mes courses » / « Créer mon compte »
+Chauffeur : après acceptation, il voit le VRAI numéro (COALESCE(guest_phone, phone)) et peut appeler
+```
+
+**Plus tard, l'invité crée son compte** : menu ☰ › « Créer mon compte » → `/inscription` (nom et numéro pré-remplis) → il choisit un PIN → `POST /api/auth/register` voit que l'appelant est un invité → `convertGuest` : même compte, vrai numéro dans `phone`, `guest = 0`. **Ses courses sont conservées**, et il peut se connecter sur n'importe quel appareil.
+
+**Pourquoi ce n'est pas risqué** : quelqu'un qui connaît le numéro d'un invité ne peut rien en faire. Le numéro n'est pas un identifiant de connexion tant que l'invité n'a pas choisi de PIN, et commander avec ce numéro crée un **autre** compte invité, sans accès aux courses du premier.
+
+---
+
+## K. Connexion à l'Administration
+
+```
+http://localhost:3001/  →  (espace)/layout.tsx → requireAdmin() → pas d'admin → redirect("/connexion")
+/connexion : LoginForm → POST /api/auth/login { phone, pin, space: "admin" }      (Administration)
+BACKEND : PIN correct ? compte bloqué ? rôle = admin ?  (sinon 403 « Accès réservé aux administrateurs »)
+          createSession() → { redirect: "/" }
+LoginForm : router.replace("/") → vue d'ensemble, menu latéral, pastilles
+```
+
+Un admin qui essaie de se connecter sur l'**Application** reçoit « Les administrateurs se connectent sur l'espace d'administration. » Un passager ou un chauffeur qui essaie sur l'**Administration** reçoit « Accès réservé aux administrateurs SURPLACE. »
+
+**PIN oublié** : dans `Backend/`, lancer `npm run reset-admin-pin -- 4821` (voir [03-backend.md](03-backend.md)).

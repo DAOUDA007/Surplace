@@ -3,11 +3,11 @@
   "private": true,
   "description": "SURPLACE — application de taxi-moto à Korhogo",
   "scripts": {
-    "install:all": "npm install --prefix Backend && npm install --prefix Frontend",
-    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev --prefix Backend\" \"npm run dev --prefix Frontend\"",
-    "dev:https": "concurrently -n api,web -c blue,magenta \"npm run dev --prefix Backend\" \"npm run dev:https --prefix Frontend\"",
-    "build": "npm run build --prefix Frontend",
-    "start": "concurrently -n api,web -c blue,magenta \"npm start --prefix Backend\" \"npm start --prefix Frontend\""
+    "install:all": "npm install --prefix Backend && npm install --prefix Application && npm install --prefix Administration",
+    "dev": "concurrently -n api,app,admin -c blue,magenta,green \"npm run dev --prefix Backend\" \"npm run dev --prefix Application\" \"npm run dev --prefix Administration\"",
+    "dev:https": "concurrently -n api,app,admin -c blue,magenta,green \"npm run dev --prefix Backend\" \"npm run dev:https --prefix Application\" \"npm run dev --prefix Administration\"",
+    "build": "npm run build --prefix Application && npm run build --prefix Administration",
+    "start": "concurrently -n api,app,admin -c blue,magenta,green \"npm start --prefix Backend\" \"npm start --prefix Application\" \"npm start --prefix Administration\""
   },
   "devDependencies": {
     "concurrently": "^10.0.5"
