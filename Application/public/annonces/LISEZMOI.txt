@@ -1,0 +1,22 @@
+ANNONCES VOCALES EN LANGUES LOCALES
+===================================
+
+Quand un utilisateur choisit « Dioula » ou « Sénoufo » dans le menu ☰ › Annonces vocales,
+l'application joue ces fichiers audio. Si un fichier manque, l'annonce est dite en français
+par la voix du téléphone.
+
+Enregistrez chaque phrase (format MP3, quelques secondes) et déposez-la ici :
+
+  dioula/<nom>.mp3      senoufo/<nom>.mp3
+
+Noms des fichiers et phrase à dire (traduite dans la langue) :
+
+  driver-found.mp3     « Un chauffeur a accepté votre course. Il arrive. »
+  driver-arrived.mp3   « Votre chauffeur est arrivé. Rejoignez-le au point de départ. »
+  ride-started.mp3     « C'est parti. Bonne route avec SURPLACE. »
+  ride-completed.mp3   « Vous êtes arrivé. Réglez le montant en espèces au chauffeur. »
+  ride-cancelled.mp3   « Votre course a été annulée. »
+  new-request.mp3      « Nouvelle demande de course à proximité. »
+  offer.mp3            « Une course vous est proposée. Répondez vite. »
+
+La liste complète est dans Commun/lib/preferences.ts (ANNOUNCEMENTS).

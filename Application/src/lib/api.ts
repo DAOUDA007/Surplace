@@ -1,3 +1,4 @@
+// ⚠️ Fichier copié depuis Commun/lib/api.ts par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 /** Appel JSON vers l'API ; lève une Error avec le message renvoyé par le serveur. */
 export async function api<T = unknown>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {

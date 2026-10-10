@@ -9,6 +9,7 @@ export function AppShell({
   links,
   map,
   topCenter,
+  role,
   children,
 }: {
   /** Absent pour un visiteur non connecté : un bouton « Se connecter » remplace le menu. */
@@ -16,6 +17,7 @@ export function AppShell({
   links: MenuLink[];
   map: React.ReactNode;
   topCenter?: React.ReactNode;
+  role?: "passenger" | "driver";
   children: React.ReactNode;
 }) {
   return (
@@ -28,7 +30,7 @@ export function AppShell({
         {topCenter && <div className="pointer-events-auto">{topCenter}</div>}
         <div className="pointer-events-auto">
           {name ? (
-            <AppMenu name={name} links={links} />
+            <AppMenu name={name} links={links} role={role} />
           ) : (
             <Link
               href="/connexion"

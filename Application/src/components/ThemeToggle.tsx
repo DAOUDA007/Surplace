@@ -1,4 +1,5 @@
 "use client";
+// ⚠️ Fichier copié depuis Commun/components/ThemeToggle.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 
 import { useEffect, useState } from "react";
 import { THEME_STORAGE_KEY as STORAGE_KEY } from "@/lib/theme";

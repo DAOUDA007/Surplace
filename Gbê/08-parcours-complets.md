@@ -13,7 +13,7 @@ npm run dev  (racine)
      │          1. env.ts      lit Backend/.env
      │          2. db.ts       ouvre/crée data/surplace.db, tables, migrations, comptes démo
      │          3. mailer.ts   prépare Gmail (ou mode « aperçu fichier »)
-     │          4. server.ts   déclare les routes, écoute le port 4000
+     │          4. app.ts      déclare les routes ; server.ts écoute le port 4000 et lance les tâches de fond (jobs.ts)
      │          → « SURPLACE API prête sur http://localhost:4000 »
      │
      ├─ [app]   npm run dev --prefix Application    →  next dev --turbopack -p 3000
@@ -37,7 +37,7 @@ NAVIGATEUR  /inscription
  ▼
 NEXT.JS (Application)  next.config.ts : /api/auth/register → http://localhost:4000/api/auth/register
  ▼
-BACKEND  server.ts  POST /auth/register
+BACKEND  app.ts  POST /auth/register
  │  role ≠ "driver" → "passenger"
  │  requiredText(name) · normalizePhone(phone) · validatePin(pin) · optionalEmail(email)   validation.ts
  │  numéro déjà pris ? → 409
@@ -108,7 +108,7 @@ PassengerApp : setRide(ride) → panneau « Recherche d'un chauffeur… » + chr
 
 ```
 events.ts : bus.emit("drivers", …)
-server.ts /events : chaque chauffeur connecté est abonné à "drivers"
+app.ts /events : chaque chauffeur connecté est abonné à "drivers"
            → res.write("data: {\"type\":\"available-rides\"}\n\n")
 NAVIGATEUR chauffeur : useServerEvents reçoit l'événement
 DriverApp : loadAvailable() → GET /api/driver/available
@@ -228,7 +228,7 @@ Le passager bloqué : à sa prochaine requête, getCurrentUser renvoie null → 
 
 ```
 Inscription avec e-mail
- → server.ts : sendMailInBackground(welcomeEmail({ name, email, role }))   (non attendu)
+ → app.ts : sendMailInBackground(welcomeEmail({ name, email, role }))   (non attendu)
  → emails/welcome.ts construit { to, subject, html, text } selon le rôle
  → mailer.ts sendMail :
       Gmail configuré (SMTP_USER + SMTP_PASS)  → envoi réel, console « envoyé à … »
@@ -243,7 +243,7 @@ Inscription avec e-mail
 ```
 Application, accueil #contact → ContactForm → POST /api/public/contact { name, phone, subject, message }
 BACKEND createContactMessage(req.ip, body)                                           public.ts
-          req.ip = vraie IP du visiteur grâce à "trust proxy" (server.ts)
+          req.ip = vraie IP du visiteur grâce à "trust proxy" (app.ts)
           plus de 3 messages en 10 min pour cette IP → 429
           INSERT INTO contact_messages
 Administration : pastille « Messages » (+1) → /messages → Répondre / Marquer traité / Supprimer
@@ -261,7 +261,7 @@ Accueil → « Commander une moto » → /passager                     (Applicat
 
 « Commander » → le formulaire guestForm apparaît : nom + numéro
 « Confirmer » → POST /api/rides/guest { name, phone, pickup, dropoff }
-BACKEND  server.ts
+BACKEND  app.ts
    déjà connecté ? → 409 ;  plus de 5 commandes invitées / heure pour cette IP ? → 429
    transaction :
      createGuestPassenger()   users : guest = 1, guest_phone = vrai numéro, phone = « invite-… »   accounts.ts
@@ -293,3 +293,84 @@ LoginForm : router.replace("/") → vue d'ensemble, menu latéral, pastilles
 Un admin qui essaie de se connecter sur l'**Application** reçoit « Les administrateurs se connectent sur l'espace d'administration. » Un passager ou un chauffeur qui essaie sur l'**Administration** reçoit « Accès réservé aux administrateurs SURPLACE. »
 
 **PIN oublié** : dans `Backend/`, lancer `npm run reset-admin-pin -- 4821` (voir [03-backend.md](03-backend.md)).
+
+---
+
+## L. Le code SMS (inscription, commande sans compte, PIN oublié, nouveau numéro)
+
+```
+OtpField « Recevoir le code » → POST /api/otp { phone, purpose }                     otp.ts › requestOtp
+   limites : 3 codes / 15 min par numéro, 10 / h par IP
+   code à 6 chiffres, haché dans otp_codes, valable 10 min
+   sms.ts › sendSms : Orange (si configuré) ou console + data/sms/ (développement : devCode affiché à l'écran)
+L'utilisateur tape le code → il part avec le formulaire (code: "123456")
+BACKEND verifyOtp(phone, purpose, code) : code juste et non expiré ? (5 essais max) → consommé
+```
+
+Les parcours B (inscription) et J (commande sans compte) passent donc par cette étape quand `otpRequired` est vrai.
+
+---
+
+## M. L'attribution automatique d'une course
+
+```
+Passager commande → createRide() → dispatchTick()                                    dispatch.ts
+  chauffeurs éligibles triés par distance (en ligne, validé, abonné, documents OK, libre, ≤ 10 km)
+  le plus proche : ride_offers (pending) + rides.offer_driver_id / offer_expires_at (+20 s)
+  → événement "offer" + push « 🏍️ Course proposée » + son et vibration sur son téléphone
+CHAUFFEUR A : carte orange « Course proposée pour vous » avec compte à rebours
+   ├─ Accepter → applyAction("accept") : OK car offre valable pour lui
+   ├─ Refuser  → /rides/:id/decline → proposée au chauffeur B
+   └─ rien     → à expiration, dispatchTick (toutes les 3 s) passe au chauffeur B
+Après 3 chauffeurs (réglable) ou s'il n'y en a aucun : dispatch_open = 1
+   → visible par tous les chauffeurs proches + push « Nouvelle demande à proximité »
+```
+
+Dans « Tarifs et réglages », le mode « Ouverte à tous » supprime l'étape des propositions.
+
+---
+
+## N. Une réservation pour un proche
+
+1. Le passager choisit départ et destination, puis **🕒 Plus tard** (ex. demain 6 h 30) et **👤 Un proche** (nom, numéro).
+2. `/api/estimate` calcule le prix **à l'heure de prise en charge** (majoration de nuit comprise si 6 h 30 est dans la plage de nuit).
+3. `POST /api/rides { …, scheduledAt, rider }` → course `requested` avec `scheduled_at`, `rider_name`, `rider_phone`.
+4. L'écran affiche « Course réservée — mardi 7 octobre à 06:30 ». Les chauffeurs ne la voient pas.
+5. À 6 h 15, `dispatchTick` la prend en compte : elle est proposée comme une course normale ; la carte du chauffeur indique « 🕒 Réservée pour 06:30 » et « Pour Maman ».
+6. Le chauffeur accepte : il voit le nom et le numéro **de la personne transportée** et l'appelle directement.
+7. Sans chauffeur à 6 h 35, la réservation est annulée et le passager prévenu (push).
+
+---
+
+## O. Le bouton d'urgence 🆘
+
+```
+Passager (ou chauffeur) pendant la course → 🆘 Urgence → « Prévenir SURPLACE maintenant »
+  position rapide (5 s max) → POST /api/emergency { rideId, lat, lng }                alerts.ts
+    emergency_alerts + lien de suivi de la course
+    canal "admins" { type: "alert" } → Administration : bandeau rouge clignotant + alarme sonore
+    push « 🆘 ALERTE URGENCE » sur les téléphones des administrateurs
+    SMS à la personne à prévenir : « … Suivi en direct : https://…/suivi/… Position : maps… »
+  L'écran propose aussi d'appeler : ligne d'urgence SURPLACE, police 110/111, pompiers 180, SAMU 185
+Administration › Urgences : rappeler la personne, voir la position, « Marquer traitée » (+ note, au journal)
+```
+
+---
+
+## P. Les documents d'un chauffeur
+
+1. Inscription (avec numéro de permis, et code de parrainage s'il en a un).
+2. « Profil et documents » → pour chaque document : **📷 Prendre ou choisir une photo** (l'appareil photo s'ouvre), date d'expiration pour le permis et l'assurance. La photo est réduite sur le téléphone puis envoyée (`POST /api/driver/documents`).
+3. Administration › Chauffeurs → fiche dépliée : vignettes des documents, dates d'expiration → **Valider**.
+4. 30 jours avant l'expiration du permis ou de l'assurance : notification au chauffeur ; pastille « documents » dans l'Administration.
+5. Si « Documents obligatoires » est activé : un chauffeur à qui il manque un document (ou dont le permis a expiré) ne peut plus passer en ligne, et ne reçoit plus de propositions.
+
+---
+
+## Q. Changer les tarifs
+
+Administration › **Tarifs et réglages** → modifier « Prix au kilomètre » → **Enregistrer** :
+`POST /api/admin/settings` → `updateSettings` (valeurs vérifiées) → table `settings` → journal « Tarifs et réglages modifiés ».
+Immédiatement : nouvelles estimations, nouvelles commandes, page d'accueil (prix affichés) et abonnements (nouvelles demandes). Les courses déjà commandées gardent leur prix.
+
+Pendant une averse : cocher **« Majoration de pluie »** puis Enregistrer ; la décocher à la fin. Les passagers voient « Pluie +15 % » sous le prix.

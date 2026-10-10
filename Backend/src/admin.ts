@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { countExpiringDocuments, listDocuments } from "./documents";
 import { HttpError } from "./http";
 import { listContactMessages, listReviewsForAdmin } from "./public";
 import { ACTIVE_STATUSES, expireStaleRequests, listRides } from "./rides";
@@ -21,6 +22,9 @@ export function getAdminCounts() {
     activeRides: count(
       `SELECT COUNT(*) AS n FROM rides WHERE status IN (${ACTIVE_STATUSES.map((s) => `'${s}'`).join(", ")})`,
     ),
+    complaintsOpen: count("SELECT COUNT(*) AS n FROM complaints WHERE status = 'open'"),
+    alertsOpen: count("SELECT COUNT(*) AS n FROM emergency_alerts WHERE handled_at IS NULL"),
+    documentsExpiring: countExpiringDocuments(),
   };
 }
 
@@ -121,6 +125,8 @@ export interface AdminDriver {
   completedRides: number;
   earnings: number;
   subscriptionUntil: string | null;
+  referredByName: string | null;
+  documents: ReturnType<typeof listDocuments>;
 }
 
 export function listAdminDrivers(filters: { status?: string; q?: string }) {
@@ -155,12 +161,14 @@ export function listAdminDrivers(filters: { status?: string; q?: string }) {
               CASE WHEN d.rating_count > 0 THEN ROUND(1.0 * d.rating_sum / d.rating_count, 1) END AS rating,
               d.rating_count AS ratingCount,
               (SELECT COUNT(*) FROM rides r WHERE r.driver_id = u.id AND r.status = 'completed') AS completedRides,
-              (SELECT COALESCE(SUM(price), 0) FROM rides r WHERE r.driver_id = u.id AND r.status = 'completed') AS earnings
+              (SELECT COALESCE(SUM(price), 0) FROM rides r WHERE r.driver_id = u.id AND r.status = 'completed') AS earnings,
+              (SELECT name FROM users p WHERE p.id = d.referred_by) AS referredByName
          FROM drivers d JOIN users u ON u.id = d.user_id
         WHERE ${where.join(" AND ")}
         ORDER BY CASE d.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, u.created_at DESC`,
     )
-    .all(...params) as AdminDriver[];
+    .all(...params)
+    .map((d) => ({ ...(d as Omit<AdminDriver, "documents">), documents: listDocuments((d as { id: number }).id) }));
 }
 
 // --- Passagers ---
@@ -179,6 +187,7 @@ export function listAdminPassengers(filters: { status?: string; q?: string }) {
     .prepare(
       `SELECT u.id, u.name, COALESCE(u.guest_phone, u.phone) AS phone, u.email, u.created_at AS createdAt, u.blocked,
               u.guest AS isGuest,
+              CASE WHEN u.rating_count > 0 THEN ROUND(1.0 * u.rating_sum / u.rating_count, 1) END AS rating,
               (SELECT COUNT(*) FROM rides r WHERE r.passenger_id = u.id) AS totalRides,
               (SELECT COUNT(*) FROM rides r WHERE r.passenger_id = u.id AND r.status = 'completed') AS completedRides,
               (SELECT COUNT(*) FROM rides r WHERE r.passenger_id = u.id AND r.status = 'cancelled' AND r.cancelled_by = 'passenger') AS cancelledRides,

@@ -1,4 +1,5 @@
 "use client";
+// ⚠️ Fichier copié depuis Commun/hooks/useServerEvents.ts par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 
 import { useEffect, useRef } from "react";
 import type { ServerEvent } from "@/lib/types";

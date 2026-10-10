@@ -1,3 +1,4 @@
+/* ⚠️ Fichier copié depuis Commun/styles/globals.css par scripts/sync-commun.mjs : modifiez l'original dans Commun/. */
 @import "tailwindcss";
 
 /* Le mode sombre est piloté par la classe .dark sur <html> (voir ThemeToggle). */
@@ -75,6 +76,15 @@
 html,
 body {
   height: 100%;
+}
+
+/* Mode simple (menu ☰) : tout est agrandi d'environ 15 %, pour lire et toucher plus facilement. */
+html.simple {
+  font-size: 18.5px;
+}
+html.simple button,
+html.simple a {
+  min-height: 2.75rem;
 }
 
 body {

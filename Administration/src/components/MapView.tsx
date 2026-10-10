@@ -1,4 +1,5 @@
 "use client";
+// ⚠️ Fichier copié depuis Commun/components/MapView.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 
 import dynamic from "next/dynamic";
 

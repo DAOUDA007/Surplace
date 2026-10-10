@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { searchAddress, searchPopularPlaces } from "@/lib/places";
 import type { Place } from "@/lib/types";
 
@@ -13,9 +14,12 @@ interface Props {
   active: boolean;
   onActivate: () => void;
   action?: React.ReactNode;
+  /** Lieux favoris et dernières destinations, proposés en premier quand le champ est vide. */
+  shortcuts?: { place: Place; icon: string }[];
 }
 
-export function PlaceSearch({ kind, value, onChange, placeholder, active, onActivate, action }: Props) {
+export function PlaceSearch({ kind, value, onChange, placeholder, active, onActivate, action, shortcuts = [] }: Props) {
+  const config = usePublicConfig();
   const [query, setQuery] = useState(value?.label ?? "");
   const [focused, setFocused] = useState(false);
   const [remote, setRemote] = useState<Place[]>([]);
@@ -49,8 +53,14 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
     };
   }, [query, focused, value]);
 
-  const local = searchPopularPlaces(query === value?.label ? "" : query);
-  const suggestions = [...local, ...remote.filter((r) => !local.some((l) => l.label === r.label))];
+  const typed = query === value?.label ? "" : query;
+  const local = searchPopularPlaces(typed, config?.places);
+  const shortcutList = typed ? [] : shortcuts;
+  const suggestions = [
+    ...shortcutList.map((s) => ({ ...s.place, icon: s.icon })),
+    ...local.map((p) => ({ ...p, icon: "📍" })),
+    ...remote.filter((r) => !local.some((l) => l.label === r.label)).map((p) => ({ ...p, icon: "🗺️" })),
+  ];
 
   function select(place: Place) {
     onChange(place);
@@ -83,15 +93,15 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
       </div>
       {focused && (suggestions.length > 0 || searching) && (
         <ul className="absolute inset-x-0 top-full z-[1200] mt-1 max-h-64 overflow-auto rounded-2xl bg-surface py-1 shadow-xl ring-1 ring-line">
-          {suggestions.map((p) => (
-            <li key={`${p.label}-${p.lat}`}>
+          {suggestions.map((p, i) => (
+            <li key={`${i}-${p.label}-${p.lat}`}>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => select(p)}
+                onClick={() => select({ label: p.label, lat: p.lat, lng: p.lng })}
                 className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-subtle"
               >
-                <span aria-hidden>📍</span>
+                <span aria-hidden>{p.icon}</span>
                 <span className="truncate">{p.label}</span>
               </button>
             </li>

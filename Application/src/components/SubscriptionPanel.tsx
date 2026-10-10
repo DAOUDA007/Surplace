@@ -14,7 +14,6 @@ export function formatDate(iso: string) {
 }
 
 /** Économie de la formule annuelle par rapport à 12 mois payés séparément. */
-const YEARLY_SAVING = SUBSCRIPTION_PLANS.monthly.price * 12 - SUBSCRIPTION_PLANS.yearly.price;
 
 export function SubscriptionPanel({
   subscription,
@@ -28,7 +27,9 @@ export function SubscriptionPanel({
   const [selected, setSelected] = useState<SubscriptionPlanId>("monthly");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const { active, until, daysLeft, pending, history } = subscription;
+  const { active, until, daysLeft, pending, history, prices } = subscription;
+  // Prix réglés dans l'administration.
+  const yearlySaving = prices.monthly * 12 - prices.yearly;
 
   async function call(path: string, body: unknown) {
     setBusy(true);
@@ -107,13 +108,13 @@ export function SubscriptionPanel({
                     selected === id ? "border-brand bg-brand-soft" : "border-line"
                   }`}
                 >
-                  {id === "yearly" && (
+                  {id === "yearly" && yearlySaving > 0 && (
                     <span className="absolute -top-2.5 right-3 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">
-                      −{formatFcfa(YEARLY_SAVING)}
+                      −{formatFcfa(yearlySaving)}
                     </span>
                   )}
                   <p className="text-sm font-semibold text-muted">{plan.label}</p>
-                  <p className="text-xl font-extrabold">{formatFcfa(plan.price)}</p>
+                  <p className="text-xl font-extrabold">{formatFcfa(prices[id])}</p>
                   <p className="text-xs text-muted">{id === "monthly" ? "par mois" : "par an"}</p>
                 </button>
               );

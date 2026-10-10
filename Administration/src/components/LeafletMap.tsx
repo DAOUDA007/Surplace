@@ -1,4 +1,5 @@
 "use client";
+// ⚠️ Fichier copié depuis Commun/components/LeafletMap.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -21,7 +22,10 @@ export interface MapMarker {
 
 export interface MapProps {
   markers: MapMarker[];
-  route?: [LatLng, LatLng] | null;
+  /** Tracé : deux points (ligne pointillée) ou un itinéraire routier complet (ligne pleine). */
+  route?: LatLng[] | null;
+  /** Cercles colorés selon une intensité (carte des zones demandées). */
+  heat?: { lat: number; lng: number; count: number }[];
   /** Points à garder visibles ; la carte se recadre quand leur liste change. */
   fitTo?: LatLng[];
   onMapClick?: (point: LatLng) => void;
@@ -90,7 +94,9 @@ export default function LeafletMap({
   className,
   bottomPadding = 0,
   accuracy,
+  heat,
 }: MapProps) {
+  const maxHeat = Math.max(1, ...(heat ?? []).map((h) => h.count));
   // Centre initial uniquement ; ensuite FitBounds pilote la vue.
   const center = useMemo(() => fitTo[0] ?? CITY_CENTER, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -110,9 +116,25 @@ export default function LeafletMap({
       {route && (
         <Polyline
           positions={route.map((p) => [p.lat, p.lng] as [number, number])}
-          pathOptions={{ color: "#111827", weight: 4, dashArray: "8 8", opacity: 0.7 }}
+          pathOptions={
+            route.length > 2
+              ? { color: "#ff6b00", weight: 5, opacity: 0.85 }
+              : { color: "#111827", weight: 4, dashArray: "8 8", opacity: 0.7 }
+          }
         />
       )}
+      {heat?.map((h) => (
+        <Circle
+          key={`${h.lat},${h.lng}`}
+          center={[h.lat, h.lng]}
+          radius={180 + 220 * (h.count / maxHeat)}
+          pathOptions={{ color: "#ff6b00", weight: 0, fillColor: "#ff6b00", fillOpacity: 0.15 + 0.45 * (h.count / maxHeat) }}
+        >
+          <Tooltip direction="top">
+            {h.count} demande{h.count > 1 ? "s" : ""}
+          </Tooltip>
+        </Circle>
+      ))}
       {accuracy && (
         <Circle
           center={[accuracy.center.lat, accuracy.center.lng]}

@@ -151,3 +151,37 @@ Les écrans admin chargent leurs données **dans le navigateur** (via `useAdminD
 | Quand | Une fois, à l'ouverture de la page | À la demande, en boucle, après un événement temps réel |
 
 Après une action qui change ce qu'affichent les composants serveur (connexion, profil, commande d'un invité), le code appelle `router.refresh()` : Next.js recalcule la page sans tout recharger.
+
+---
+
+## Pages ajoutées avec les nouvelles fonctionnalités
+
+### Application
+
+| Fichier | Adresse | Contenu |
+|---|---|---|
+| `app/manifest.ts` | `/manifest.webmanifest` | Rend l'application **installable** : nom, icônes (`public/icon-*.png`), couleurs, raccourcis « Commander » et « Espace chauffeur » |
+| `app/(auth)/pin-oublie/page.tsx` | `/pin-oublie` | « Code PIN oublié » : numéro → code SMS → nouveau PIN (`PinResetForm`) |
+| `app/notifications/page.tsx` | `/notifications` | Notifications 🔔 (lues à l'ouverture) ; propose d'activer les notifications sur le téléphone |
+| `app/suivi/[token]/page.tsx` | `/suivi/<jeton>` | Suivi en direct d'une course partagée, **sans compte**, actualisé toutes les 5 s (`TrackView`). Non indexé par Google |
+| `app/chauffeur/historique/page.tsx` | `/chauffeur/historique` | « Mes gains » : tuiles (jour, semaine, temps en ligne, taux d'acceptation, note, abonnement), graphique des 7 jours, répartition des notes, parrainage |
+| `app/chauffeur/profil/page.tsx` | `/chauffeur/profil` | « Profil et documents » : infos, **documents** (`#documents`), **code de parrainage**, PIN |
+| `app/page.tsx` | `/` | Les prix affichés (au km, minimum, abonnements, « X mois offerts ») viennent maintenant des **réglages de l'administration** (`/public/config`) |
+
+`app/layout.tsx` ajoute `<PwaSetup />` (service worker, invitation à installer) et les métadonnées pour l'iPhone. Le script de thème applique aussi le **mode simple** avant l'affichage.
+
+### Administration
+
+| Adresse | Écran | Droit |
+|---|---|---|
+| `/alertes` | Urgences 🆘 : alertes à traiter, position sur une carte, personnes à appeler | `alerts` |
+| `/reclamations` | Réclamations : réponse envoyée en notification, suppression | `complaints` |
+| `/rapports` | Rapport mensuel et **exports Excel** | `reports` / `exports` |
+| `/diffusion` | Messages groupés (notification, push, SMS en option) | `broadcast` |
+| `/reglages` | Tarifs, majorations nuit / pluie, abonnements, attribution, parrainage, documents obligatoires | `settings` |
+| `/lieux` | Lieux fréquents : ajout en touchant la carte, modification, désactivation | `places` |
+| `/journal` | Journal des actions des administrateurs | `audit` |
+| `/systeme` | État du serveur, services configurés, sauvegardes (« Sauvegarder maintenant ») | `system` |
+| `/pin-oublie` | PIN oublié par SMS (hors de l'espace connecté) | — |
+
+Le menu n'affiche que les écrans permis par le **rôle** de l'administrateur ; le Backend refuse de toute façon les appels non autorisés (403).

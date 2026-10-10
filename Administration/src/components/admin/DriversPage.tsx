@@ -5,7 +5,16 @@ import { StatusBadge } from "@/components/ui";
 import { useAdminAction, useAdminData } from "@/hooks/useAdminData";
 import { formatDateTime, formatPhone } from "@/lib/format";
 import { formatFcfa, SUBSCRIPTION_PLANS } from "@/lib/pricing";
-import type { AdminCounts, AdminDriver, Ride, SubscriptionPlanId } from "@/lib/types";
+import {
+  DOCUMENT_LABELS,
+  REQUIRED_DOCUMENTS,
+  type AdminCounts,
+  type AdminDriver,
+  type DocumentType,
+  type DriverDocument,
+  type Ride,
+  type SubscriptionPlanId,
+} from "@/lib/types";
 import { ActionButton, Card, EmptyState, FilterTabs, LoadingRows, PageError, PageHeader, SearchInput, TableWrap, td, th } from "./ui";
 
 type Filter = "all" | "pending" | "approved" | "online" | "unsubscribed" | "suspended";
@@ -23,6 +32,51 @@ function subscriptionState(until: string | null) {
   const active = new Date(until) > new Date();
   const date = new Date(until).toLocaleDateString("fr-FR");
   return { active, text: active ? `Jusqu'au ${date}` : `Expiré le ${date}` };
+}
+
+/** Documents envoyés par le chauffeur : cliquez pour voir la photo en grand. */
+function DriverDocuments({ documents }: { documents: DriverDocument[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {(Object.keys(DOCUMENT_LABELS) as DocumentType[]).map((type) => {
+        const doc = documents.find((d) => d.type === type);
+        const required = REQUIRED_DOCUMENTS.includes(type);
+        if (!doc) {
+          return (
+            <span
+              key={type}
+              className={`rounded-xl px-3 py-2 text-xs ${required ? "bg-amber-100 text-amber-800" : "bg-surface text-muted ring-1 ring-line"}`}
+            >
+              {DOCUMENT_LABELS[type]} : {required ? "manquant" : "non fourni"}
+            </span>
+          );
+        }
+        return (
+          <a
+            key={type}
+            href={`/api/admin/documents/${doc.id}/file`}
+            target="_blank"
+            rel="noreferrer"
+            className={`flex items-center gap-2 rounded-xl px-2 py-1.5 text-xs ring-1 ${doc.expired ? "bg-red-50 text-red-700 ring-red-200" : doc.expiringSoon ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-surface ring-line"}`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/api/admin/documents/${doc.id}/file`} alt="" className="h-10 w-10 rounded-lg object-cover" />
+            <span>
+              <span className="block font-semibold">{DOCUMENT_LABELS[type]}</span>
+              {doc.expiresAt ? (
+                <span className="block">
+                  {doc.expired ? "Expiré le " : "Expire le "}
+                  {new Date(doc.expiresAt).toLocaleDateString("fr-FR")}
+                </span>
+              ) : (
+                <span className="block text-muted">Envoyé le {new Date(doc.uploadedAt).toLocaleDateString("fr-FR")}</span>
+              )}
+            </span>
+          </a>
+        );
+      })}
+    </div>
+  );
 }
 
 function DriverRides({ driverId }: { driverId: number }) {
@@ -206,10 +260,17 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
                               <p>Inscrit le {formatDateTime(d.createdAt)}</p>
                               <p>Total gagné : {formatFcfa(d.earnings)}</p>
                               <p>{d.isOnline ? "🟢 En ligne" : "⚪ Hors ligne"}</p>
+                              {d.referredByName && <p>🎁 Parrainé par {d.referredByName}</p>}
                             </div>
-                            <div>
-                              <p className="mb-2 text-xs font-bold uppercase text-muted">Dernières courses</p>
-                              <DriverRides driverId={d.id} />
+                            <div className="space-y-4">
+                              <div>
+                                <p className="mb-2 text-xs font-bold uppercase text-muted">Documents</p>
+                                <DriverDocuments documents={d.documents} />
+                              </div>
+                              <div>
+                                <p className="mb-2 text-xs font-bold uppercase text-muted">Dernières courses</p>
+                                <DriverRides driverId={d.id} />
+                              </div>
                             </div>
                           </div>
                         </td>

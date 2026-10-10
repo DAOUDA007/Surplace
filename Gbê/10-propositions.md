@@ -1,5 +1,50 @@
 # 10. Propositions pour faire évoluer SURPLACE
 
+## Bilan : ce qui est réalisé
+
+Toutes les propositions ci-dessous ont été intégrées, **sauf les paiements** (exclus à votre demande) et la montée en charge sur plusieurs serveurs (inutile pour l'instant).
+
+| Proposition | État | Où le voir |
+|---|---|---|
+| Limiter les tentatives de connexion | ✅ | `limits.ts` ; message « Trop de tentatives » |
+| Vérification du numéro par SMS | ✅ (fournisseur Orange à configurer) | Inscription, commande sans compte, PIN oublié, changement de numéro |
+| PIN oublié sans l'administrateur | ✅ | `/pin-oublie` (Application et Administration) |
+| Application installable + notifications push | ✅ | Menu ☰ › Installer / Notifications sur le téléphone |
+| Partage de course et bouton d'urgence | ✅ | Pendant une course ; Administration › Urgences |
+| Photos des documents du chauffeur, dates d'expiration | ✅ | Profil et documents ; Administration › Chauffeurs |
+| Sauvegardes automatiques | ✅ | Administration › Système et sauvegardes |
+| Lieux favoris, dernières destinations | ✅ | Écran passager |
+| Commander pour quelqu'un d'autre | ✅ | « 👤 Un proche » |
+| Réservation à l'avance | ✅ | « 🕒 Plus tard » |
+| Réclamation sur une course | ✅ | Historique › Signaler un problème ; Administration › Réclamations |
+| Prix et trajet par la route (OSRM) | ✅ (serveur OSRM à installer) | `routing.ts`, `deploy/DEPLOIEMENT.md` |
+| Mode simple et annonces vocales | ✅ français ; dioula / sénoufo : **fichiers audio à enregistrer** | Menu ☰ |
+| Alerte sonore, vibration, écran allumé | ✅ | Écran chauffeur |
+| Attribution automatique au plus proche | ✅ | Administration › Tarifs et réglages |
+| Rappels d'abonnement | ✅ | Notifications J-3 et J-1 (et SMS) |
+| Noter le passager | ✅ | Fin de course côté chauffeur |
+| Carte des zones demandées | ✅ | « 🔥 Zones demandées » ; Rapports |
+| Statistiques du chauffeur | ✅ | Mes gains et statistiques |
+| Économie de données et de batterie | ✅ | Menu ☰ (chauffeurs) ; photos réduites avant envoi |
+| Parrainage | ✅ en **jours d'abonnement** (pas d'argent) | Profil et documents |
+| Tarifs modifiables, majoration nuit / pluie | ✅ | Administration › Tarifs et réglages |
+| Journal des actions | ✅ | Administration › Journal |
+| Rôles d'administrateur | ✅ | Administration › Administrateurs |
+| Exports Excel, rapports mensuels | ✅ | Administration › Rapports et exports |
+| Messages groupés | ✅ | Administration › Messages groupés |
+| Gestion des lieux fréquents | ✅ | Administration › Lieux fréquents |
+| Mise en ligne (HTTPS, deux domaines, redémarrage auto) | ✅ fichiers prêts | `deploy/` |
+| Fin des copies de fichiers | ✅ | `Commun/` + `scripts/sync-commun.mjs` |
+| Tests automatiques | ✅ 17 parcours | `npm test` |
+| Surveillance | ✅ | `/api/health`, écran Système |
+| Paiement Mobile Money, pourboires, abonnement payé en ligne | ❌ exclu | — |
+| Codes promo passagers | ❌ (impliquerait de rembourser les chauffeurs) | — |
+| Plusieurs serveurs (PostgreSQL, Redis) | ⏸️ plus tard, si nécessaire | — |
+
+Le reste de ce fichier est la liste d'origine, conservée pour mémoire.
+
+---
+
 Des fonctionnalités et améliorations classées par priorité, pensées pour le contexte de Korhogo : beaucoup d'utilisateurs sur téléphone Android, réseau mobile parfois faible, paiement en espèces et Mobile Money, sécurité à moto.
 
 **Effort** : 🟢 petit (1 à 3 jours) · 🟡 moyen (1 à 2 semaines) · 🔴 important (plusieurs semaines).

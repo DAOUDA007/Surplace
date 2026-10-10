@@ -1,8 +1,11 @@
 "use client";
+// ⚠️ Fichier copié depuis Commun/components/ProfileForm.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { OtpField } from "@/components/OtpField";
 import { Button, ErrorMessage } from "@/components/ui";
+import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { api } from "@/lib/api";
 import type { DriverProfile, User } from "@/lib/types";
 
@@ -31,6 +34,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /** Informations personnelles (et véhicule pour un chauffeur). */
 export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverProfile | null }) {
   const router = useRouter();
+  const config = usePublicConfig();
   const [form, setForm] = useState({
     name: user.name,
     phone: user.phone,
@@ -38,7 +42,13 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
     plate: driver?.plate ?? "",
     motoModel: driver?.motoModel ?? "",
     licenseNumber: driver?.licenseNumber ?? "",
+    emergencyContactName: user.emergencyContactName ?? "",
+    emergencyContactPhone: user.emergencyContactPhone ?? "",
   });
+  const [code, setCode] = useState("");
+  // Nouveau numéro : un code SMS est envoyé à ce numéro pour prouver qu'il vous appartient.
+  const phoneChanged = form.phone.replace(/\D/g, "").replace(/^225/, "") !== user.phone;
+  const needCode = phoneChanged && !!config?.otpRequired;
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,7 +70,7 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
     setSuccess("");
     setLoading(true);
     try {
-      const { revalidation } = await api<{ revalidation: boolean }>("/api/me/profile", form);
+      const { revalidation } = await api<{ revalidation: boolean }>("/api/me/profile", { ...form, code });
       setSuccess(
         revalidation
           ? "Profil enregistré. Votre nouveau véhicule doit être vérifié par SURPLACE : votre compte est en attente de validation."
@@ -83,6 +93,7 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
         <Field label="Numéro de téléphone" hint="C'est aussi votre identifiant de connexion.">
           <input required type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} className={inputClass} />
         </Field>
+        {needCode && <OtpField phone={form.phone} purpose="phone" value={code} onChange={setCode} label="Code envoyé au nouveau numéro" />}
         <Field label="Adresse e-mail (facultatif)">
           <input
             type="email"
@@ -124,9 +135,35 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
             passer en ligne jusqu&apos;à ce que l&apos;équipe SURPLACE ait vérifié vos informations.
           </p>
         )}
+        {user.role !== "admin" && (
+          <div className="space-y-3 rounded-2xl bg-subtle p-4">
+            <div>
+              <p className="text-sm font-semibold">🆘 Personne à prévenir en cas d&apos;urgence (facultatif)</p>
+              <p className="text-xs text-muted">
+                Si vous touchez le bouton d&apos;urgence pendant une course, elle reçoit un SMS avec votre position.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                value={form.emergencyContactName}
+                onChange={set("emergencyContactName")}
+                placeholder="Nom (ex. Maman)"
+                className={inputClass}
+              />
+              <input
+                type="tel"
+                inputMode="tel"
+                value={form.emergencyContactPhone}
+                onChange={set("emergencyContactPhone")}
+                placeholder="Numéro"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        )}
         <ErrorMessage>{error}</ErrorMessage>
         {success && <p className="rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">{success}</p>}
-        <Button type="submit" loading={loading}>
+        <Button type="submit" loading={loading} disabled={needCode && code.length !== 6}>
           Enregistrer
         </Button>
       </form>

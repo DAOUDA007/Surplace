@@ -3,10 +3,10 @@ import { ContactForm } from "@/components/ContactForm";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CITY_NAME, POPULAR_PLACES } from "@/lib/places";
-import { estimateTrip, formatFcfa, PRICING, SUBSCRIPTION_PLANS } from "@/lib/pricing";
+import { DEFAULT_SETTINGS, estimateTrip, formatFcfa, SUBSCRIPTION_PLANS } from "@/lib/pricing";
 import { backendGet, getSession, homeFor } from "@/lib/server";
 import { CONTACT } from "@/lib/site";
-import type { PublicReviews } from "@/lib/types";
+import type { AppSettings, PublicReviews } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,16 +20,24 @@ const STEPS = [
 /** Les étapes sont répétées 3 fois pour que le défilement en boucle ne laisse jamais de vide. */
 const MARQUEE_STEPS = [...STEPS, ...STEPS, ...STEPS];
 
-// Exemple de course affiché dans le bandeau, calculé avec le vrai tarif.
+// Exemple de course affiché dans le bandeau, calculé avec le tarif réglé dans l'administration.
 const EXAMPLE_FROM = POPULAR_PLACES.find((p) => p.label === "Gare routière")!;
 const EXAMPLE_TO = POPULAR_PLACES.find((p) => p.label === "Université Peleforo Gon Coulibaly")!;
-const EXAMPLE = estimateTrip(EXAMPLE_FROM, EXAMPLE_TO);
 
 async function loadReviews(): Promise<PublicReviews | null> {
   try {
     return await backendGet<PublicReviews>("/public/reviews");
   } catch {
     return null;
+  }
+}
+
+/** Tarifs et prix des abonnements en vigueur (valeurs par défaut si le serveur ne répond pas). */
+async function loadSettings(): Promise<AppSettings> {
+  try {
+    return (await backendGet<{ settings: AppSettings }>("/public/config"))?.settings ?? DEFAULT_SETTINGS;
+  } catch {
+    return DEFAULT_SETTINGS;
   }
 }
 
@@ -46,8 +54,11 @@ function StarRow({ value, size = "text-base" }: { value: number; size?: string }
 }
 
 export default async function Home() {
-  const [session, reviews] = await Promise.all([getSession(), loadReviews()]);
+  const [session, reviews, settings] = await Promise.all([getSession(), loadReviews(), loadSettings()]);
   const user = session?.user ?? null;
+  const pricing = settings.pricing;
+  const plans = settings.plans;
+  const EXAMPLE = estimateTrip(EXAMPLE_FROM, EXAMPLE_TO, pricing);
   // Commander ne demande pas de compte : un visiteur va directement à l'écran de commande.
   const appHref = user ? homeFor(user.role) : "/passager";
 
@@ -169,10 +180,10 @@ export default async function Home() {
         <div className="rounded-3xl bg-brand p-8 text-white">
           <h2 className="text-2xl font-extrabold">Un prix simple</h2>
           <p className="mt-4 text-5xl font-extrabold">
-            {PRICING.perKm} F<span className="text-2xl font-bold text-orange-100"> / km</span>
+            {pricing.perKm} F<span className="text-2xl font-bold text-orange-100"> / km</span>
           </p>
           <ul className="mt-4 space-y-1 text-orange-50">
-            <li>Course minimum : {formatFcfa(PRICING.minimumFare)}</li>
+            <li>Course minimum : {formatFcfa(pricing.minimumFare)}</li>
             <li>Prix affiché avant de commander, sans surprise</li>
             <li>Paiement en espèces au chauffeur</li>
           </ul>
@@ -187,15 +198,17 @@ export default async function Home() {
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-subtle p-4">
               <p className="text-sm text-muted">{SUBSCRIPTION_PLANS.monthly.label}</p>
-              <p className="text-xl font-extrabold">{formatFcfa(SUBSCRIPTION_PLANS.monthly.price)}</p>
+              <p className="text-xl font-extrabold">{formatFcfa(plans.monthly)}</p>
               <p className="text-xs text-muted">par mois</p>
             </div>
             <div className="relative rounded-2xl bg-brand-soft p-4 ring-2 ring-brand">
-              <span className="absolute -top-2.5 right-3 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">
-                2 mois offerts
-              </span>
+              {plans.monthly > 0 && plans.monthly * 12 > plans.yearly && (
+                <span className="absolute -top-2.5 right-3 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">
+                  {Math.round((plans.monthly * 12 - plans.yearly) / plans.monthly)} mois offerts
+                </span>
+              )}
               <p className="text-sm text-muted">{SUBSCRIPTION_PLANS.yearly.label}</p>
-              <p className="text-xl font-extrabold">{formatFcfa(SUBSCRIPTION_PLANS.yearly.price)}</p>
+              <p className="text-xl font-extrabold">{formatFcfa(plans.yearly)}</p>
               <p className="text-xs text-muted">par an</p>
             </div>
           </div>

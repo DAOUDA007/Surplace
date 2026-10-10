@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+/* Le mode sombre est piloté par la classe .dark sur <html> (voir ThemeToggle). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand: #ff6b00;
+  --color-brand-dark: #e05e00;
+  /* Couleur fixe, identique dans les deux thèmes (bandeau de la page d'accueil). */
+  --color-night: #111827;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Couleurs qui changent selon le thème. */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-ink: var(--ink);
+  --color-contrast: var(--contrast);
+  --color-on-contrast: var(--on-contrast);
+  --color-brand-soft: var(--brand-soft);
+}
+
+:root {
+  --canvas: #fafaf9;
+  --surface: #ffffff;
+  --subtle: #f5f5f4;
+  --line: #e7e5e4;
+  --muted: #57534e;
+  --faint: #a8a29e;
+  --ink: #111827;
+  --contrast: #111827;
+  --on-contrast: #ffffff;
+  --brand-soft: #fff1e6;
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #0c0a09;
+  --surface: #1c1917;
+  --subtle: #292524;
+  --line: #3f3a36;
+  --muted: #a8a29e;
+  --faint: #78716c;
+  --ink: #f5f5f4;
+  --contrast: #f5f5f4;
+  --on-contrast: #111827;
+  --brand-soft: #3b2414;
+  color-scheme: dark;
+
+  /* Pastilles et messages colorés : teintes adaptées au fond sombre. */
+  --color-amber-50: #3a2a0c;
+  --color-amber-100: #4a340c;
+  --color-amber-200: #6b4c12;
+  --color-amber-800: #fcd34d;
+  --color-red-50: #3b1414;
+  --color-red-100: #4c1a1a;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-sky-50: #0c2a3b;
+  --color-sky-100: #0f3347;
+  --color-sky-700: #7dd3fc;
+  --color-sky-800: #bae6fd;
+  --color-emerald-100: #0f3a2b;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-violet-100: #2e1f4d;
+  --color-violet-800: #ddd6fe;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* Mode simple (menu ☰) : tout est agrandi d'environ 15 %, pour lire et toucher plus facilement. */
+html.simple {
+  font-size: 18.5px;
+}
+html.simple button,
+html.simple a {
+  min-height: 2.75rem;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s;
+}
+
+/* Défilement en boucle (« Comment ça marche » sur la page d'accueil).
+   Le contenu est répété 3 fois : décaler d'un tiers ramène exactement au point de départ. */
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-33.3333%);
+  }
+}
+/* Animations réduites demandées par l'appareil : pas de mouvement, défilement manuel. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* Marqueurs de carte */
+.pin-marker {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--pin);
+  transform: rotate(-45deg);
+  border: 3px solid white;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.3);
+}
+.pin-marker span {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  transform: rotate(45deg);
+  color: white;
+  font: 800 12px/1 system-ui, sans-serif;
+}
+.driver-marker {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  background: white;
+  border: 3px solid var(--color-brand);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  font-size: 20px;
+  transition: transform 0.3s;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  background: var(--line);
+}
+
+/* Carte en mode sombre : on inverse les tuiles OpenStreetMap. */
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+.dark .leaflet-tooltip {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.dark .leaflet-tooltip-top::before {
+  border-top-color: var(--surface);
+}
+.dark .leaflet-control-attribution {
+  background: rgb(28 25 23 / 0.8);
+  color: var(--muted);
+}
+.dark .leaflet-control-attribution a {
+  color: var(--muted);
+}

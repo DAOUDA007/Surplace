@@ -1,9 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { db } from "./db";
+import { deleteDriverFiles } from "./documents";
 import { publish, publishToUser } from "./events";
 import { HttpError } from "./http";
+import { verifyOtp } from "./otp";
 import { hashPin, verifyPin } from "./password";
-import type { User } from "./types";
+import { isAdminRole } from "./permissions";
+import type { AdminRole, User } from "./types";
 import { normalizePhone, optionalEmail, requiredText, validateLicense, validatePin } from "./validation";
 
 const ACTIVE_RIDE_SQL = "status IN ('requested', 'accepted', 'arrived', 'in_progress')";
@@ -24,10 +27,17 @@ export function updateProfile(user: User, body: Record<string, unknown>) {
   const phone = normalizePhone(body.phone);
   const email = optionalEmail(body.email);
   assertPhoneFree(phone, user.id);
+  // Nouveau numéro : il faut prouver qu'on le possède (code SMS envoyé à ce numéro).
+  if (phone !== user.phone) verifyOtp(phone, "phone", body.code);
+  const contactName = String(body.emergencyContactName ?? "").trim().slice(0, 80) || null;
+  const contactPhone = body.emergencyContactPhone ? normalizePhone(body.emergencyContactPhone) : null;
+  if (contactPhone && !contactName) throw new HttpError(400, "Indiquez le nom de la personne à prévenir.");
 
   let revalidation = false;
   db.transaction(() => {
-    db.prepare("UPDATE users SET name = ?, phone = ?, email = ? WHERE id = ?").run(name, phone, email, user.id);
+    db.prepare(
+      "UPDATE users SET name = ?, phone = ?, email = ?, emergency_contact_name = ?, emergency_contact_phone = ? WHERE id = ?",
+    ).run(name, phone, email, contactPhone ? contactName : null, contactPhone, user.id);
 
     if (user.role === "driver") {
       const plate = requiredText(body.plate, "Immatriculation", 20).toUpperCase();
@@ -68,6 +78,24 @@ export function changePin(userId: number, currentPin: unknown, newPin: unknown) 
     throw new HttpError(400, "Le code PIN actuel est incorrect.");
   }
   db.prepare("UPDATE users SET pin_hash = ? WHERE id = ?").run(hashPin(validatePin(newPin)), userId);
+}
+
+/**
+ * Code PIN oublié : le code SMS prouve que la personne possède le numéro.
+ * Les sessions ouvertes sont fermées ; un compte bloqué ou supprimé ne peut pas être réinitialisé.
+ */
+export function resetPin(phoneInput: unknown, code: unknown, newPin: unknown) {
+  const phone = normalizePhone(phoneInput);
+  const pin = validatePin(newPin);
+  verifyOtp(phone, "reset", code);
+  const user = db.prepare("SELECT id FROM users WHERE phone = ? AND deleted_at IS NULL AND blocked = 0").get(phone) as
+    | { id: number }
+    | undefined;
+  if (!user) throw new HttpError(404, "Aucun compte actif avec ce numéro.");
+  db.transaction(() => {
+    db.prepare("UPDATE users SET pin_hash = ? WHERE id = ?").run(hashPin(pin), user.id);
+    db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
+  })();
 }
 
 // --- Passagers invités (commande sans inscription) ---
@@ -125,14 +153,19 @@ export function deleteMemberAccount(userId: number, role: "passenger" | "driver"
   if (active) throw new HttpError(409, "Ce compte a une course en cours : annulez-la d'abord depuis l'écran Courses.");
 
   const hasRides = db.prepare(`SELECT 1 FROM rides WHERE ${column} = ?`).get(userId);
+  // Les photos des documents (permis, pièce d'identité…) sont toujours effacées.
+  if (role === "driver") deleteDriverFiles(userId);
   db.transaction(() => {
     db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
     if (!hasRides) {
       db.prepare("DELETE FROM users WHERE id = ?").run(userId);
       return;
     }
+    db.prepare("DELETE FROM saved_places WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM push_subscriptions WHERE user_id = ?").run(userId);
     db.prepare(
-      `UPDATE users SET name = ?, phone = ?, guest_phone = NULL, email = NULL, pin_hash = ?, blocked = 1, deleted_at = ?
+      `UPDATE users SET name = ?, phone = ?, guest_phone = NULL, email = NULL, pin_hash = ?, blocked = 1, deleted_at = ?,
+              emergency_contact_name = NULL, emergency_contact_phone = NULL
         WHERE id = ?`,
     ).run(
       role === "driver" ? "Chauffeur supprimé" : "Passager supprimé",
@@ -165,11 +198,19 @@ export function listAdmins() {
   return (
     db
       .prepare(
-        `SELECT id, name, phone, created_at AS createdAt, blocked, is_principal AS isPrincipal
+        `SELECT id, name, phone, created_at AS createdAt, blocked, is_principal AS isPrincipal, admin_role AS adminRole
            FROM users WHERE role = 'admin' AND deleted_at IS NULL
           ORDER BY is_principal DESC, created_at ASC`,
       )
-      .all() as { id: number; name: string; phone: string; createdAt: string; blocked: number; isPrincipal: number }[]
+      .all() as {
+      id: number;
+      name: string;
+      phone: string;
+      createdAt: string;
+      blocked: number;
+      isPrincipal: number;
+      adminRole: AdminRole;
+    }[]
   ).map((a) => ({ ...a, blocked: a.blocked === 1, isPrincipal: a.isPrincipal === 1 }));
 }
 
@@ -177,13 +218,18 @@ export function createAdmin(body: Record<string, unknown>) {
   const name = requiredText(body.name, "Nom");
   const phone = normalizePhone(body.phone);
   const pin = validatePin(body.pin);
+  const role = isAdminRole(body.adminRole) ? body.adminRole : "full";
   assertPhoneFree(phone);
-  db.prepare("INSERT INTO users (role, name, phone, pin_hash, created_at) VALUES ('admin', ?, ?, ?, ?)").run(
-    name,
-    phone,
-    hashPin(pin),
-    new Date().toISOString(),
-  );
+  db.prepare(
+    "INSERT INTO users (role, name, phone, pin_hash, created_at, admin_role) VALUES ('admin', ?, ?, ?, ?, ?)",
+  ).run(name, phone, hashPin(pin), new Date().toISOString(), role);
+}
+
+/** Change le rôle (droits) d'un autre administrateur. */
+export function setAdminRole(principal: User, adminId: number, role: unknown) {
+  if (!isAdminRole(role)) throw new HttpError(400, "Rôle inconnu.");
+  getOtherAdmin(principal, adminId);
+  db.prepare("UPDATE users SET admin_role = ? WHERE id = ?").run(role, adminId);
 }
 
 function getOtherAdmin(principal: User, adminId: number) {

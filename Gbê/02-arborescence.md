@@ -1,240 +1,180 @@
 # 2. Arborescence complète
 
-Voici tous les fichiers suivis par git (hors `node_modules` et fichiers générés), avec leur rôle en une ligne. Les fichiers suivants détaillent chaque partie.
+Tous les fichiers du projet (hors `node_modules` et fichiers générés), avec leur rôle en une ligne. Les fichiers suivants détaillent chaque partie.
 
 ```
 Surplace/
 │
-├── package.json            Scripts qui pilotent les trois projets (dev, build, start…) + concurrently
-├── package-lock.json       Versions exactes installées à la racine (généré par npm, ne pas modifier à la main)
-├── README.md               Documentation d'utilisation (démarrage, comptes de démo, règles métier)
-├── .gitignore              Ce que git ne doit jamais enregistrer (voir plus bas)
-├── node_modules/           Paquets installés à la racine (concurrently) — généré
+├── package.json            Scripts qui pilotent les trois projets (dev, build, start, test, sync) + concurrently
+├── README.md               Mode d'emploi (démarrage, comptes de démo, règles métier)
+├── .gitignore              Ce que git ne doit jamais enregistrer
 │
 ├── Gbê/                    ← Cette documentation
+├── deploy/                 Mise en ligne : DEPLOIEMENT.md (guide), ecosystem.config.cjs (PM2), nginx.conf (HTTPS)
+├── scripts/
+│   └── sync-commun.mjs     Recopie les fichiers de Commun/ dans les trois projets (ou les vérifie avec --check)
+│
+├── Commun/                 ══════ SEULE version des fichiers partagés (voir plus bas) ══════
+│   ├── LISEZMOI.md
+│   ├── lib/                types, pricing, site, permissions, format, theme, api, places, preferences, push
+│   ├── components/         Logo, ThemeToggle, MapView, LeafletMap, ui, ProfileForm, PwaSetup, OtpField, PinResetForm
+│   ├── hooks/              useServerEvents (temps réel), usePublicConfig (tarifs, lieux, options)
+│   ├── styles/globals.css  Couleurs, mode sombre, mode simple, marqueurs, défilement
+│   └── public/             sw.js (notifications push, page hors connexion), icônes de l'application installable
 │
 ├── Backend/                ══════ API Express + SQLite (port 4000) ══════
-│   ├── package.json        Dépendances et scripts (dev, start, typecheck, reset-admin-pin)
-│   ├── package-lock.json   Versions exactes (généré)
-│   ├── tsconfig.json       Réglages TypeScript du Backend (vérifie src/ et scripts/)
-│   ├── .env.example        Modèle du fichier de secrets (Gmail, adresse du site)
-│   ├── .env                (non suivi par git) Vos vrais secrets
-│   ├── data/
-│   │   ├── .gitkeep        Fichier vide pour que git conserve le dossier
-│   │   ├── surplace.db     (non suivi) La base de données, créée au premier lancement
-│   │   └── emails/         (non suivi) E-mails enregistrés quand Gmail n'est pas configuré
-│   ├── scripts/
-│   │   └── reset-admin-pin.ts  Outil en ligne de commande : nouveau PIN pour l'administrateur principal
+│   ├── package.json        Scripts : dev, start, typecheck, test, reset-admin-pin, backup
+│   ├── tsconfig.json       Vérifie src/, scripts/ et tests/
+│   ├── .env.example        Modèle des secrets : Gmail, SMS Orange, push, OSRM, adresses
+│   ├── data/               (non suivi) base, sauvegardes, photos de documents, SMS de test, clés push
+│   ├── scripts/            reset-admin-pin.ts (PIN admin oublié), backup.ts (sauvegarde manuelle)
+│   ├── tests/api.test.ts   17 tests automatiques des parcours (npm test)
 │   └── src/
-│       ├── server.ts       ★ Point d'entrée : crée le serveur, déclare TOUTES les routes /api
+│       ├── server.ts       Démarrage : écoute le port 4000, lance les tâches de fond
+│       ├── app.ts          ★ Toutes les routes /api (Express)
 │       │
-│       │   ── Infrastructure (outils techniques) ──
-│       ├── env.ts          Charge Backend/.env dans process.env (importé en tout premier)
-│       ├── db.ts           Ouvre SQLite, crée les tables, migre, insère les comptes de démo
-│       ├── http.ts         HttpError + route() : transforme résultats et erreurs en réponses JSON
-│       ├── validation.ts   Vérifie et nettoie les saisies (téléphone, PIN, e-mail, permis, texte, id)
-│       ├── password.ts     Hachage et vérification des codes PIN (scrypt)
-│       ├── auth.ts         Sessions par cookie : créer, détruire, lire l'utilisateur connecté
-│       ├── events.ts       Bus d'événements temps réel en mémoire (publish / subscribe)
-│       ├── mailer.ts       Envoi d'e-mails (Gmail) ou enregistrement en fichier
+│       │   ── Infrastructure ──
+│       ├── env.ts, config.ts   Lecture de Backend/.env (adresses, mode production)
+│       ├── db.ts           SQLite : tables, migrations, comptes de démo, lieux de départ
+│       ├── http.ts         HttpError + route() (réponses JSON, erreurs)
+│       ├── validation.ts   Saisies : téléphone, PIN, e-mail, permis, texte, identifiant
+│       ├── password.ts     Hachage des PIN (et des codes SMS)
+│       ├── auth.ts         Sessions, utilisateur connecté, droits des administrateurs
+│       ├── limits.ts       Limites anti-abus (tentatives de connexion, SMS, requêtes…)
+│       ├── events.ts       Bus temps réel en mémoire
+│       ├── mailer.ts, emails/welcome.ts   E-mails
+│       ├── sms.ts, otp.ts  SMS (Orange ou console) et codes de vérification
+│       ├── push.ts         Notifications push (web-push)
+│       ├── notifications.ts Notifications 🔔 + push + SMS, messages groupés
+│       ├── backup.ts       Sauvegardes quotidiennes
+│       ├── jobs.ts         Tâches de fond : attribution, rappels, sauvegardes, ménage
+│       ├── audit.ts        Journal des actions des administrateurs
+│       ├── settings.ts     Tarifs et réglages modifiables depuis l'administration
 │       │
-│       │   ── Partagés avec les sites (copies à garder identiques) ──
-│       ├── types.ts        Types de données : User, Ride, DriverProfile, ServerEvent…
-│       ├── pricing.ts      Grille tarifaire, formules d'abonnement, calcul distance/prix
-│       ├── site.ts         Coordonnées de contact (pour les e-mails) + SITE_URL
+│       │   ── Copiés depuis Commun/ (ne pas modifier ici) ──
+│       ├── types.ts, pricing.ts, site.ts, permissions.ts
 │       │
-│       │   ── Règles métier (une thématique par fichier) ──
-│       ├── rides.ts        Cycle de vie d'une course (création, accepter, arriver, démarrer, terminer, annuler, noter)
-│       ├── drivers.ts      Profil chauffeur : en ligne / hors ligne, position GPS, validation
-│       ├── subscriptions.ts Abonnements des chauffeurs : demande, paiement, prolongation, expiration
-│       ├── accounts.ts     Profils, PIN, passagers invités, suppression de comptes, administrateurs
-│       ├── admin.ts        Statistiques et listes du tableau de bord, suppressions de contenus
-│       ├── public.ts       Avis publics de la page d'accueil, messages du formulaire de contact
-│       └── emails/
-│           └── welcome.ts  Contenu HTML + texte de l'e-mail de bienvenue (passager / chauffeur)
+│       │   ── Règles métier ──
+│       ├── rides.ts        Courses : création, étapes, réservations, pour un proche, notes, partage
+│       ├── dispatch.ts     Attribution automatique au chauffeur le plus proche
+│       ├── routing.ts      Distance et prix (itinéraire OSRM ou ligne droite × facteur)
+│       ├── drivers.ts      En ligne, position, validation, heures en ligne
+│       ├── documents.ts    Documents des chauffeurs (photos, expiration)
+│       ├── subscriptions.ts Abonnements (prix réglables, prolongation, jours offerts)
+│       ├── referrals.ts    Parrainage entre chauffeurs (jours d'abonnement)
+│       ├── accounts.ts     Profils, PIN, PIN oublié, invités, suppression, administrateurs et rôles
+│       ├── alerts.ts       Bouton d'urgence 🆘
+│       ├── complaints.ts   Réclamations
+│       ├── places.ts       Lieux fréquents, favoris, dernières destinations
+│       ├── stats.ts        Statistiques des chauffeurs, zones demandées
+│       ├── reports.ts      Rapport mensuel, exports CSV
+│       ├── admin.ts        Pastilles, vue d'ensemble, listes, suppressions
+│       └── public.ts       Avis publics, formulaire de contact
 │
 ├── Application/            ══════ Site public, passagers et chauffeurs — Next.js (port 3000) ══════
-│   ├── package.json        Dépendances et scripts
-│   ├── tsconfig.json       Réglages TypeScript (dont l'alias @/ → src/)
-│   ├── next.config.ts      Le relais /api/* → Backend
-│   ├── postcss.config.mjs  Branche Tailwind CSS
+│   ├── public/             (copiés) sw.js, icônes ; annonces/ : fichiers audio en dioula et sénoufo (à enregistrer)
 │   └── src/
-│       ├── app/            ── PAGES : chaque dossier = une adresse ──
-│       │   ├── layout.tsx          Squelette HTML commun (police, thème, CSS)
-│       │   ├── globals.css         Couleurs, mode sombre, marqueurs de carte, défilement « Comment ça marche »
-│       │   ├── icon.png            Icône de l'onglet du navigateur
-│       │   ├── page.tsx            /                    Page d'accueil publique
-│       │   ├── (auth)/             Groupe de pages SANS effet sur l'adresse (parenthèses)
-│       │   │   ├── layout.tsx      Cadre des pages de connexion ; redirige si déjà connecté (sauf invité)
-│       │   │   ├── connexion/page.tsx    /connexion    (passagers et chauffeurs)
-│       │   │   └── inscription/page.tsx  /inscription  (aussi : un invité y crée son compte)
-│       │   ├── passager/
-│       │   │   ├── page.tsx            /passager             Écran de commande — OUVERT À TOUS (mode invité)
-│       │   │   ├── historique/page.tsx /passager/historique  Mes courses
-│       │   │   └── profil/page.tsx     /passager/profil      Mon profil (un invité est envoyé vers /inscription)
-│       │   └── chauffeur/
-│       │       ├── page.tsx            /chauffeur            Écran chauffeur (carte, demandes)
-│       │       ├── historique/page.tsx /chauffeur/historique Mes gains
-│       │       └── profil/page.tsx     /chauffeur/profil     Mon profil (moto + permis)
-│       │
+│       ├── app/
+│       │   ├── layout.tsx          Squelette HTML, thème, mode simple, PwaSetup
+│       │   ├── manifest.ts         Application installable (nom, icônes, couleurs)
+│       │   ├── page.tsx            /                      Accueil (tarifs réels, « Comment ça marche »…)
+│       │   ├── (auth)/             /connexion, /inscription (code SMS, parrainage), /pin-oublie
+│       │   ├── passager/           /passager (ouvert à tous), /passager/historique, /passager/profil
+│       │   ├── chauffeur/          /chauffeur, /chauffeur/historique (gains et statistiques), /chauffeur/profil (documents)
+│       │   ├── notifications/      /notifications         La cloche 🔔
+│       │   └── suivi/[token]/      /suivi/…               Suivi en direct pour un proche (sans compte)
 │       ├── components/
-│       │   ├── PassengerApp.tsx    ★ Écran passager (commande avec ou sans compte, suivi, notation)
-│       │   ├── DriverApp.tsx       ★ Écran chauffeur (en ligne, demandes, course, mode démo)
-│       │   ├── AppShell.tsx        Carte plein écran + barre du haut + panneau (Sheet) ; « Se connecter » pour un visiteur
-│       │   ├── AppMenu.tsx         Menu ☰ (liens, thème, déconnexion)
-│       │   ├── MapView.tsx         Charge la carte uniquement dans le navigateur
-│       │   ├── LeafletMap.tsx      La carte (marqueurs, trajet, recadrage)
-│       │   ├── PlaceSearch.tsx     Champ de recherche de lieu avec suggestions
-│       │   ├── AuthForms.tsx       Connexion, inscription (avec permis pour les chauffeurs), cadre AuthShell
-│       │   ├── ProfilePage.tsx     Page « Mon profil »
-│       │   ├── ProfileForm.tsx     Formulaire infos (nom, tél, e-mail, moto, permis) + formulaire PIN
-│       │   ├── RideHistory.tsx     Liste des courses passées
-│       │   ├── SubscriptionPanel.tsx Abonnement du chauffeur
-│       │   ├── ContactForm.tsx     Formulaire de contact de l'accueil
-│       │   ├── ThemeToggle.tsx     Bouton clair / sombre / auto
-│       │   ├── Logo.tsx            Logo SURPLACE
-│       │   └── ui.tsx              Button, StatusBadge, ErrorMessage, Route, Stars
-│       ├── hooks/
-│       │   ├── useServerEvents.ts  Flux temps réel /api/events (désactivable pour un visiteur)
-│       │   └── useSheetHeight.ts   Hauteur du panneau du bas pour recadrer la carte
-│       └── lib/
-│           ├── api.ts          api() : appel JSON vers /api depuis le navigateur
-│           ├── server.ts       backendGet, getSession, homeFor (admin → site d'administration), requirePageUser
-│           ├── types.ts        Types partagés
-│           ├── pricing.ts      Copie EXACTE de Backend/src/pricing.ts
-│           ├── site.ts         Coordonnées de contact + sujets du formulaire
-│           ├── places.ts       Korhogo : centre, lieux fréquents, recherche Nominatim
-│           ├── geolocation.ts  Localisation GPS précise + messages d'erreur
-│           ├── format.ts       Libellés des statuts, dates, téléphones
-│           └── theme.ts        Script anti-« flash » du thème
+│       │   ├── PassengerApp.tsx    ★ Écran passager : prix serveur, favoris, réservation, pour un proche, invité + SMS, partage, urgence
+│       │   ├── DriverApp.tsx       ★ Écran chauffeur : propositions avec compte à rebours, son, écran allumé, batterie, zones, note du passager
+│       │   ├── AppShell.tsx, AppMenu.tsx   Carte plein écran ; menu ☰ (cloche, réglages, installation)
+│       │   ├── PlaceSearch.tsx     Recherche de lieu (favoris, lieux fréquents, Nominatim)
+│       │   ├── AuthForms.tsx       Connexion, inscription
+│       │   ├── ProfilePage.tsx, DocumentsPanel.tsx, ReferralCard.tsx   Profil, documents, parrainage
+│       │   ├── RideHistory.tsx, ComplaintButton.tsx   Historique, « Signaler un problème »
+│       │   ├── EmergencyButton.tsx, ShareRideButton.tsx, DriverPhoto.tsx, TrackView.tsx
+│       │   ├── NotificationsList.tsx, SubscriptionPanel.tsx, ContactForm.tsx
+│       │   └── (copiés) Logo, ThemeToggle, MapView, LeafletMap, ui, ProfileForm, PwaSetup, OtpField, PinResetForm
+│       ├── hooks/              useSheetHeight ; (copiés) useServerEvents, usePublicConfig
+│       └── lib/                server.ts, geolocation.ts ; (copiés) types, pricing, site, format, theme, api, places, preferences, push
 │
 └── Administration/         ══════ Espace d'administration — Next.js (port 3001) ══════
-    ├── package.json        Dépendances et scripts (port 3001)
-    ├── tsconfig.json, next.config.ts, postcss.config.mjs   (mêmes rôles que dans Application)
     └── src/
         ├── app/
-        │   ├── layout.tsx          Squelette HTML (titre « Administration », non indexé par Google)
-        │   ├── globals.css, icon.png
-        │   ├── connexion/page.tsx  /connexion  Connexion réservée aux administrateurs
-        │   └── (espace)/           Groupe : toutes les pages qui exigent un admin connecté
-        │       ├── layout.tsx      Vérifie l'admin (requireAdmin) + menu latéral (AdminShell)
-        │       ├── page.tsx        /                 Vue d'ensemble
-        │       ├── courses/        /courses
-        │       ├── chauffeurs/     /chauffeurs
-        │       ├── passagers/      /passagers
-        │       ├── abonnements/    /abonnements
-        │       ├── avis/           /avis
-        │       ├── messages/       /messages
-        │       ├── administrateurs/ /administrateurs
-        │       └── compte/         /compte
+        │   ├── layout.tsx, manifest.ts     Squelette (non indexé par Google), installable
+        │   ├── connexion/, pin-oublie/     Connexion réservée aux admins, PIN oublié par SMS
+        │   └── (espace)/                   Pages qui exigent un admin connecté :
+        │       /  /alertes  /courses  /chauffeurs  /passagers  /abonnements  /rapports  /reclamations
+        │       /avis  /messages  /diffusion  /reglages  /lieux  /administrateurs  /journal  /systeme  /compte
         ├── components/
-        │   ├── LoginForm.tsx       Formulaire de connexion admin (envoie space: "admin")
-        │   ├── admin/              Les écrans : AdminShell, OverviewPage, RidesPage, DriversPage, PassengersPage,
-        │   │                       SubscriptionsPage, ReviewsPage, MessagesPage, AdminsPage, AccountPage, ui
-        │   └── MapView, LeafletMap, Logo, ThemeToggle, ProfileForm, ui   (copies de l'Application)
-        ├── hooks/
-        │   └── useAdminData.ts     Chargement périodique des données admin + actions
-        └── lib/
-            ├── server.ts           backendGet, getAdmin, requireAdmin (propre à l'Administration)
-            └── api, types, format, pricing, places, theme   (copies de l'Application)
+        │   ├── LoginForm.tsx
+        │   ├── admin/              AdminShell (menu filtré par rôle, alarme d'urgence), un écran par page
+        │   └── (copiés)            Logo, ThemeToggle, MapView, LeafletMap, ui, ProfileForm, PwaSetup, OtpField, PinResetForm
+        ├── hooks/                  useAdminData ; (copiés) useServerEvents, usePublicConfig
+        └── lib/                    server.ts (getAdmin, requireAdmin) ; (copiés) types, pricing, permissions…
 ```
 
 ## Pourquoi cette organisation ?
 
-### Racine : un « chef d'orchestre » léger
+### Trois programmes, un dossier commun
 
-La racine ne contient pas de code applicatif. Son `package.json` lance les **trois** programmes ensemble. C'est un **monorepo** : un seul dépôt git, plusieurs projets indépendants.
+| Dossier | Public | Pourquoi séparé |
+|---|---|---|
+| `Backend/` | Aucun (serveur) | Seul à toucher aux données et à décider (prix, droits, sécurité). |
+| `Application/` | Clients (passagers, chauffeurs) | Léger, rapide sur téléphone, installable. |
+| `Administration/` | Équipe SURPLACE | Adresse à part, protégeable (liste d'IP), code jamais envoyé aux clients. |
+| `Commun/` | — | **Une seule version** des fichiers utilisés par plusieurs projets. |
 
-### Pourquoi deux sites (Application et Administration) ?
+### Le dossier `Commun/` et la synchronisation
 
-| Avantage | Explication |
-|---|---|
-| **Sécurité** | L'espace admin peut être mis sur une adresse à part (ex. `admin.surplace.ci`), protégée en plus (pare-feu, accès limité). Le code du tableau de bord n'est jamais envoyé aux passagers et chauffeurs. |
-| **Légèreté** | Le site public est plus petit : il charge plus vite sur les téléphones. |
-| **Indépendance** | On peut modifier ou redéployer l'admin sans toucher au site des clients, et inversement. |
-| **Clarté** | Chaque dossier a un seul public : les clients d'un côté, l'équipe de l'autre. |
+Les trois projets ont chacun leur `package.json` : ils ne peuvent pas importer facilement un dossier extérieur. Plutôt qu'un système de paquets partagés (plus compliqué à installer), chaque fichier partagé est **recopié** dans les projets qui l'utilisent par `scripts/sync-commun.mjs`.
 
-Contrepartie : quelques fichiers sont **copiés** dans les deux sites (carte, logo, thème, formulaire de profil, `types.ts`, `pricing.ts`, `format.ts`…). Une correction dans l'un doit être reportée dans l'autre (liste dans [09-modifier-et-points-d-attention.md](09-modifier-et-points-d-attention.md)).
+- On modifie **toujours** l'original dans `Commun/`.
+- Les copies portent en première ligne « ⚠️ Fichier copié depuis Commun/… ».
+- La copie est automatique avant chaque `npm run dev`, `npm run build` et `npm start` (scripts `predev`, `prebuild`, `prestart` de chaque projet). À la main : `npm run sync` à la racine.
+- `node scripts/sync-commun.mjs --check` vérifie qu'aucune copie n'a été modifiée par erreur ; les tests du Backend le font aussi.
 
-Les deux sites parlent au **même Backend** et à la **même base**.
+La liste « fichier → dossiers de destination » est en haut de `scripts/sync-commun.mjs`.
 
-### Backend : à plat, un fichier par sujet
+### Backend : un fichier par sujet
 
-Trois couches :
+1. **`app.ts`** : les routes. Chacune vérifie qui appelle, puis délègue à une fonction métier.
+2. **Les fichiers métier** : les règles et les requêtes SQL, un sujet par fichier.
+3. **L'infrastructure** : base, sessions, limites, SMS, push, sauvegardes, tâches de fond.
 
-1. **`server.ts`** : la porte d'entrée. Chaque route vérifie qui appelle (`requireUser`), puis délègue à une fonction métier.
-2. **Les fichiers métier** (`rides.ts`, `drivers.ts`, `subscriptions.ts`, `accounts.ts`, `admin.ts`, `public.ts`) : les règles et les requêtes SQL.
-3. **L'infrastructure** (`db.ts`, `auth.ts`, `http.ts`, `events.ts`, `mailer.ts`, `validation.ts`, `password.ts`, `env.ts`).
+### Sites Next.js
 
-`scripts/` contient des outils lancés à la main par l'exploitant (pas par le serveur).
+- **`src/app/`** : chaque dossier avec un `page.tsx` devient une adresse. Fichiers très courts.
+- **`src/components/`** : les écrans.
+- **`src/hooks/`** et **`src/lib/`** : logique réutilisable et outils sans interface.
 
-### Sites Next.js : la structure imposée par Next.js
-
-- **`src/app/`** : chaque dossier contenant un `page.tsx` devient une adresse. Les fichiers de `app/` sont **très courts** : ils vérifient l'accès puis affichent un composant.
-- **`src/components/`** : le vrai travail d'interface.
-- **`src/hooks/`** : la logique React réutilisable.
-- **`src/lib/`** : les fonctions sans interface (calculs, formats, appels réseau).
-
-### Les dossiers spéciaux de Next.js
-
-| Écriture | Signification | Exemple ici |
+| Écriture | Signification | Exemple |
 |---|---|---|
 | `page.tsx` | Le contenu d'une adresse | `Application/src/app/passager/page.tsx` → `/passager` |
-| `layout.tsx` | Un cadre qui entoure toutes les pages du dossier et de ses sous-dossiers | `Administration/src/app/(espace)/layout.tsx` entoure tous les écrans admin |
-| `(nom)/` | **Groupe de routes** : partage un `layout.tsx` sans apparaître dans l'adresse | `(espace)/courses` → `/courses` ; `(auth)/connexion` → `/connexion` |
-| `icon.png` | Icône de l'onglet, détectée automatiquement | `src/app/icon.png` |
-
-Dans l'Administration, `connexion/` est **en dehors** du groupe `(espace)` : la page de connexion ne doit évidemment pas exiger d'être connecté.
+| `layout.tsx` | Cadre commun aux pages du dossier | `Administration/src/app/(espace)/layout.tsx` |
+| `(nom)/` | Groupe de routes (absent de l'adresse) | `(espace)/courses` → `/courses` |
+| `[nom]/` | Partie variable de l'adresse | `suivi/[token]` → `/suivi/AbC123…` |
+| `manifest.ts`, `icon.png` | Fichiers spéciaux détectés par Next.js | application installable, icône d'onglet |
 
 ## Conventions de nommage
 
 | Élément | Convention | Exemples |
 |---|---|---|
-| Adresses du site | **Français** | `/passager`, `/chauffeur/historique`, `/abonnements` |
-| Code (variables, fonctions, fichiers) | **Anglais** | `createRide`, `DriverApp.tsx`, `subscriptions.ts` |
-| Textes affichés, commentaires | **Français** | `"Votre chauffeur est arrivé !"` |
-| Composants React | `PascalCase`, un fichier `.tsx` | `PassengerApp`, `LeafletMap` |
-| Hooks React | commencent par `use` | `useServerEvents`, `useAdminData` |
-| Constantes de configuration | `MAJUSCULES` | `PRICING`, `REQUEST_TIMEOUT_MIN`, `CITY_CENTER` |
-| Colonnes SQL | `snake_case` | `pickup_lat`, `license_number` |
-| Champs JSON / TypeScript | `camelCase` | `requestedAt`, `licenseNumber`, `isGuest` |
+| Adresses du site | **Français** | `/passager`, `/pin-oublie`, `/reglages` |
+| Code (variables, fonctions, fichiers) | **Anglais** | `createRide`, `dispatchTick`, `DocumentsPanel.tsx` |
+| Textes affichés, commentaires | **Français** | `"Course proposée pour vous"` |
+| Composants React | `PascalCase` | `EmergencyButton` |
+| Hooks React | `useXxx` | `usePublicConfig` |
+| Constantes | `MAJUSCULES` | `DEFAULT_SETTINGS`, `REQUIRED_DOCUMENTS` |
+| Colonnes SQL | `snake_case` | `scheduled_at`, `offer_expires_at` |
+| Champs JSON / TypeScript | `camelCase` | `scheduledAt`, `offerExpiresAt` |
 
-Le passage de `snake_case` (base) à `camelCase` (JSON) se fait dans le Backend, avec `AS` dans le SQL (`paid_at AS paidAt`) ou dans une fonction de conversion (`toRide()` dans `rides.ts`).
-
-### L'alias `@/`
-
-Dans chaque site, `import { api } from "@/lib/api"` signifie `<site>/src/lib/api.ts`. C'est défini dans le `tsconfig.json` du site (`"paths": { "@/*": ["./src/*"] }`).
+L'alias **`@/`** (`tsconfig.json` de chaque site) désigne le dossier `src/` du site : `@/lib/api` = `src/lib/api.ts`.
 
 ## Fichiers de configuration
 
-### `.gitignore` (racine)
-
-| Ligne | Pourquoi l'ignorer |
-|---|---|
-| `node_modules/` | Se réinstalle avec `npm install` ; très volumineux |
-| `.next/`, `out/` | Résultats de compilation de Next.js (s'applique aux deux sites) |
-| `next-env.d.ts`, `*.tsbuildinfo` | Générés automatiquement |
-| `Backend/data/*.db`, `Backend/data/*.db-*` | La base et ses fichiers temporaires (`-wal`, `-shm`) |
-| `.env*.local`, `Backend/.env` | **Secrets** |
-| `Application/certificates/` | Certificat https de développement |
-| `Backend/data/emails/` | Aperçus d'e-mails générés |
-
-### `Backend/tsconfig.json`
-
-- `"module": "commonjs"`, `"strict": true`, `"noEmit": true` (TypeScript vérifie, `tsx` exécute).
-- `"include": ["src", "scripts"]` : les outils de `scripts/` sont vérifiés aussi.
-
-### `tsconfig.json` des sites
-
-- `"jsx": "preserve"` : Next.js transforme le JSX.
-- `"moduleResolution": "bundler"` : mode adapté aux outils modernes.
-- `"paths"` : l'alias `@/`.
-
-### `next.config.ts` des sites
-
-- `rewrites()` : le relais `/api/*` → Backend (voir [01-vue-d-ensemble.md](01-vue-d-ensemble.md)).
-- `outputFileTracingRoot: __dirname` : la racine du site est son propre dossier.
-
-### `postcss.config.mjs`
-
-Branche `@tailwindcss/postcss`, qui génère le CSS des classes Tailwind utilisées.
+- **`.gitignore`** : `node_modules/`, `.next/`, la base et tout `Backend/data/` sensible (sauvegardes, photos de documents, SMS, clés push), les secrets (`Backend/.env`), le certificat https de développement.
+- **`Backend/tsconfig.json`** : `strict`, `noEmit` (TypeScript vérifie, `tsx` exécute), inclut `src`, `scripts`, `tests`.
+- **`tsconfig.json` des sites** : `jsx: preserve`, `moduleResolution: bundler`, alias `@/`.
+- **`next.config.ts` des sites** : relais `/api/*` → Backend.
+- **`postcss.config.mjs`** : branche Tailwind CSS.
+- **`deploy/`** : configuration du serveur de production (voir `deploy/DEPLOIEMENT.md`).

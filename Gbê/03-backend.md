@@ -8,7 +8,7 @@ Dossier : `Backend/src/`. Langage : TypeScript exécuté par `tsx`. Serveur : Ex
 Requête HTTP  (ex. POST /api/rides  avec un cookie surplace_session)
    │
    ▼
-server.ts
+app.ts
    ├─ express.json()     → transforme le corps JSON en objet req.body (100 ko max)
    ├─ cookieParser()     → transforme les cookies en objet req.cookies
    ├─ route "/rides"     → enveloppée par route() (http.ts)
@@ -21,22 +21,25 @@ server.ts
 
 ---
 
-## `server.ts` — le point d'entrée
+## `app.ts` et `server.ts` — les routes et le démarrage
 
-**Rôle** : créer l'application Express, déclarer toutes les routes et démarrer l'écoute sur le port 4000.
+- **`app.ts`** crée l'application Express et déclare **toutes les routes**. Il exporte `app` sans démarrer de serveur : les tests (`tests/api.test.ts`) peuvent ainsi lancer l'API sur un port libre, avec une base temporaire.
+- **`server.ts`** (quelques lignes) : importe `app`, écoute le port 4000, affiche l'état des services (e-mail, SMS, itinéraires) et lance les **tâches de fond** (`jobs.ts` : attribution des courses toutes les 3 s, rappels, sauvegardes, ménage).
 
-Points clés, dans l'ordre du fichier :
+Points clés de `app.ts`, dans l'ordre du fichier :
 
 1. **`import "./env"` en premier** : les autres modules lisent `process.env` dès leur chargement (par ex. `mailer.ts` crée le transporteur Gmail à l'import). Il faut donc que `.env` soit chargé avant.
 2. **`app.disable("x-powered-by")`** : n'annonce pas « Express » dans les en-têtes (petite mesure de discrétion).
 3. **`app.set("trust proxy", "loopback")`** : les requêtes arrivent du proxy Next.js (même machine). Ce réglage fait confiance à l'en-tête `X-Forwarded-For` pour connaître la **vraie IP** du visiteur. Utilisé par la limite anti-spam du formulaire de contact.
 4. **`const api = express.Router()`** : toutes les routes sont attachées à ce routeur, lui-même monté sur `/api` à la fin (`app.use("/api", api)`).
 5. Les routes, groupées par thème avec des commentaires `// --- Authentification ---`, `// --- Courses ---`, etc. La liste complète est dans [05-routes-api.md](05-routes-api.md).
-6. **Les routes d'inscription et de connexion** sont écrites directement dans `server.ts` (pas dans un fichier métier) car elles sont courtes.
-7. **`adminDelete(path, fn)`** : petite fonction qui fabrique les 6 routes de suppression admin d'un coup, pour éviter de répéter 6 fois le même code.
-8. **`/events`** : la route du temps réel (Server-Sent Events), expliquée plus bas.
-9. **`/health`** : renvoie `{ ok: true }`. Sert à vérifier que l'API répond (surveillance, hébergeur).
-10. Une route « attrape-tout » renvoie `404 Route introuvable.` pour les adresses `/api/...` inconnues, puis `errorHandler` traite les erreurs.
+6. **Les routes d'inscription et de connexion** sont écrites directement dans `app.ts` (pas dans un fichier métier) car elles sont courtes.
+7. **`adminGet(path, droit, fn)`** et **`adminPost(path, droit, décrire, fn)`** : fabriquent les routes d'administration. Elles vérifient le **droit** du rôle de l'administrateur (`requireAdmin`), et `adminPost` inscrit chaque action au **journal** (`audit.ts`) en masquant les PIN et les images. `principalPost` ajoute la vérification « administrateur principal ».
+8. **`fileRoute(fn)`** : renvoie un fichier (photo de document, export CSV) au lieu de JSON, avec `nosniff` et un cache privé.
+9. **`/events`** : la route du temps réel (Server-Sent Events), expliquée plus bas. Les administrateurs écoutent aussi le canal `admins` (alertes d'urgence).
+10. **`/health`** : renvoie `{ ok, uptimeSeconds }`, ou 503 si la base ne répond pas. Pour la surveillance (UptimeRobot…).
+11. Avant tout : `apiRateLimit` (600 requêtes / min / IP) et une limite de taille de 8 Mo pour la seule route d'envoi de documents (100 ko ailleurs).
+12. Une route « attrape-tout » renvoie `404 Route introuvable.` pour les adresses `/api/...` inconnues, puis `errorHandler` traite les erreurs.
 
 ### L'inscription (`POST /auth/register`) en détail
 
@@ -370,35 +373,156 @@ La date du jour est calculée en UTC (`toISOString().slice(0, 10)`) : c'est corr
 
 ---
 
-## Les fichiers partagés : `types.ts`, `pricing.ts`, `site.ts`
+## Les fichiers partagés : `types.ts`, `pricing.ts`, `site.ts`, `permissions.ts`
 
-Ces fichiers existent en **plusieurs exemplaires** : `Backend/src/`, `Application/src/lib/` et (pour `types.ts` et `pricing.ts`) `Administration/src/lib/`.
+Ces fichiers sont **copiés depuis `Commun/lib/`** (voir [02-arborescence.md](02-arborescence.md)). Leur première ligne le rappelle : « ⚠️ Fichier copié depuis Commun/… ». On ne les modifie **jamais** dans `Backend/src/` : on modifie l'original dans `Commun/`, et la copie est refaite automatiquement à chaque `npm run dev` / `npm start` (script `scripts/sync-commun.mjs`).
 
-**Pourquoi deux copies ?** Les deux projets sont indépendants (chacun son `package.json`). Les partager vraiment nécessiterait un troisième paquet commun, ce qui complique l'installation. Pour un projet de cette taille, la copie est un compromis acceptable, à condition de **les garder synchronisées** (un commentaire en tête de chaque fichier le rappelle).
-
-- **`pricing.ts`** (identiques aujourd'hui) :
-  - `PRICING` : 50 FCFA/km, minimum 200 FCFA, arrondi aux 25 FCFA supérieurs, vitesse moyenne 25 km/h, facteur route ×1,3.
-  - `SUBSCRIPTION_PLANS` : Mensuel 1 000 FCFA (1 mois), Annuel 10 000 FCFA (12 mois).
-  - `haversineKm(a, b)` : distance à vol d'oiseau entre deux points GPS (formule de haversine, rayon terrestre 6 371 km).
-  - `estimateTrip(a, b)` : distance ×1,3 arrondie au dixième, prix, durée estimée (3 min minimum).
+- **`pricing.ts`** :
+  - `PRICING`, `SUBSCRIPTION_PLANS`, `DEFAULT_SETTINGS` : valeurs **par défaut**. Les valeurs réellement appliquées se règlent dans l'administration (`settings.ts`).
+  - `haversineKm(a, b)` : distance à vol d'oiseau entre deux points GPS.
+  - `priceFor(distance, tarif, majoration %)` : base + km × prix, majoration, minimum, arrondi.
+  - `activeSurcharges(réglages, date)` : majorations de nuit et de pluie en vigueur.
+  - `estimateTrip(a, b, tarif)` : ligne droite × facteur route, prix, durée.
   - `formatFcfa(n)` : `1500` → `"1 500 FCFA"`.
-  - L'Application l'utilise pour **afficher** le prix avant la commande ; le Backend pour **décider** du prix réel. Même formule des deux côtés = l'utilisateur paie exactement ce qu'il a vu.
-- **`types.ts`** : la partie commune est identique ; les versions des sites ajoutent des types propres à l'admin et aux abonnements (`AdminDriver`, `DriverSubscription`, etc.).
-- **`site.ts`** : coordonnées de contact. ⚠️ Les deux versions **ne sont pas identiques** actuellement (voir [09-modifier-et-points-d-attention.md](09-modifier-et-points-d-attention.md)).
+- **`types.ts`** : tous les types de données (course, profil, réglages, documents, notifications, rapports…) et quelques constantes (`DOCUMENT_LABELS`, `REQUIRED_DOCUMENTS`, `COMPLAINT_CATEGORIES`).
+- **`site.ts`** : coordonnées de SURPLACE, ligne d'urgence, numéros des secours (110, 111, 180, 185). La même version sert désormais à la page d'accueil et aux e-mails.
+- **`permissions.ts`** : droits de chaque rôle d'administrateur (voir plus bas).
+
+`config.ts` (propre au Backend) lit `SITE_URL`, `ADMIN_URL` et `NODE_ENV`.
 
 ---
 
-## `scripts/reset-admin-pin.ts` — PIN administrateur oublié
+## `scripts/` — outils lancés à la main
 
-Outil lancé **à la main** dans le dossier `Backend` :
+| Commande (dans `Backend/`) | Rôle |
+|---|---|
+| `npm run reset-admin-pin -- 4821` | Nouveau PIN pour l'administrateur principal, sans SMS (il faut avoir accès au serveur). Débloque le compte et ferme ses sessions. |
+| `npm run backup` | Sauvegarde immédiate de la base dans `data/backups/`. |
+| `npm test` | Tests automatiques (voir la fin de ce fichier). |
 
-```bash
-npm run reset-admin-pin -- 4821
-```
+**Pourquoi un outil serveur en plus de « PIN oublié » par SMS ?** Si aucun fournisseur SMS n'est configuré, c'est la seule façon de récupérer l'accès admin. Avoir accès au serveur prouve qu'on est l'exploitant.
 
-1. Vérifie que le nouveau PIN a 4 chiffres.
-2. Trouve l'**administrateur principal** (`is_principal = 1`).
-3. Remplace l'empreinte de son PIN (`hashPin`), le débloque s'il était bloqué, ferme toutes ses sessions.
-4. Affiche son nom et son numéro de connexion.
+---
 
-**Pourquoi un script et pas un bouton « PIN oublié » ?** Les PIN sont hachés : on ne peut pas les relire, seulement en définir un nouveau. Sans envoi de code par SMS, n'importe qui pourrait réinitialiser le PIN d'un autre. Le script exige d'avoir accès au **serveur** lui-même, ce qui prouve qu'on est l'exploitant.
+# Modules ajoutés (sécurité, confiance, confort, administration)
+
+## `limits.ts` — limiter les abus
+
+`RateLimiter(max, fenêtre)` compte des événements par clé (numéro, IP) sur une fenêtre glissante, en mémoire. `check(clé, message)` lève une erreur 429 (« Réessayez dans {minutes} min »), `hit` compte, `reset` remet à zéro.
+
+| Limite | Valeur | Où |
+|---|---|---|
+| Connexion : échecs par numéro | 5 en 15 min | `/auth/login` (remis à zéro après une connexion réussie ou « PIN oublié ») |
+| Connexion : échecs par IP | 30 en 15 min | `/auth/login` |
+| Toute l'API | 600 requêtes / min / IP | `apiRateLimit` |
+| Codes SMS | 3 / 15 min par numéro, 10 / h par IP | `otp.ts` |
+| Commandes sans compte | 5 / h / IP | `/rides/guest` |
+| Estimations de prix | 60 / min / IP | `/estimate` |
+| Alertes d'urgence | 3 / 10 min par personne | `alerts.ts` |
+
+Un PIN de 4 chiffres a 10 000 possibilités : avec 5 essais par quart d'heure, il faudrait plus de 20 jours pour toutes les essayer sur un numéro.
+
+## `sms.ts` et `otp.ts` — vérification des numéros
+
+- **`sms.ts`** : `sendSms(numéro, texte)`. Avec `SMS_PROVIDER=orange` (+ identifiants), envoi par l'API SMS d'Orange (jeton OAuth gardé en mémoire). Sinon, le SMS est affiché dans la console et enregistré dans `data/sms/` (rien n'est envoyé). `sendSmsInBackground` n'attend pas et ne fait jamais échouer l'action.
+- **`otp.ts`** : codes à 6 chiffres, valables 10 minutes, 5 essais au plus, stockés **hachés** (comme les PIN) dans `otp_codes`.
+  - `requestOtp(numéro, but, ip)` : `register` (refusé si le numéro a déjà un compte), `guest`, `reset` (ne révèle jamais si le numéro existe : aucun SMS ne part, mais la réponse est la même), `phone` (changement de numéro).
+  - `verifyOtp(numéro, but, code)` : vérifie et **consomme** le code.
+  - **`otpRequired`** = fournisseur SMS configuré **ou** développement. En développement, la réponse contient `devCode` (affiché à l'écran « Mode test »). En production sans fournisseur, la vérification est désactivée (sinon personne ne pourrait s'inscrire).
+
+## `settings.ts` — tarifs et réglages modifiables
+
+`getSettings()` lit la ligne `app` de la table `settings` (JSON) et complète avec `DEFAULT_SETTINGS` (gardé en mémoire). `updateSettings(valeurs)` vérifie chaque valeur (plages autorisées) et enregistre. Contenu : prix (au km, minimum, prise en charge, arrondi, facteur route, vitesse), majorations (nuit avec heures et %, pluie activable à la main), prix des abonnements, mode d'attribution, jours de parrainage, documents obligatoires.
+
+## `routing.ts` — distance et prix d'un trajet
+
+`estimateRoute(départ, arrivée, heure)` :
+1. Si `OSRM_URL` est défini : demande l'itinéraire au serveur OSRM (4 s maximum, résultat gardé en cache) → distance **par la route**, durée, tracé simplifié (150 points).
+2. Sinon (ou si OSRM ne répond pas) : ligne droite × facteur route.
+3. Applique le tarif en vigueur et les majorations à l'**heure de prise en charge** (une réservation de nuit est majorée).
+
+Utilisé par `/estimate` (affichage) **et** par la création de course (prix facturé) : le passager paie ce qu'il a vu.
+
+## `documents.ts` — documents des chauffeurs
+
+- Types : photo du visage, permis, carte grise, pièce d'identité (obligatoires), assurance (facultative). Permis et assurance ont une **date d'expiration**.
+- `saveDocument` : reçoit l'image en « data URL » (JPEG/PNG/WebP, 5 Mo max, contenu vérifié par ses premiers octets), l'écrit dans `data/uploads/documents/` avec un nom aléatoire, remplace l'ancienne. Remplacer un document déjà vérifié remet un chauffeur validé « à valider ».
+- `documentIssues` (manquants / expirés) et `documentsBlocking` (les mêmes, **seulement si** le réglage « Documents obligatoires » est activé) : utilisés pour passer en ligne, accepter une course et l'attribution automatique.
+- Les fichiers ne sont servis qu'au chauffeur et à l'équipe ; la **photo** aussi au passager d'une course récente et à la page de suivi partagé.
+
+## `dispatch.ts` — attribution automatique des courses
+
+Mode **« au plus proche »** (par défaut) :
+1. Une nouvelle demande (ou une réservation qui arrive à 15 min de l'heure prévue) est proposée au **chauffeur libre le plus proche** : en ligne, validé, abonné, documents en règle, position récente (< 10 min), sans course ni autre proposition en cours, à ≤ 10 km.
+2. Il a `offerSeconds` (20 s) pour accepter ou refuser (`/rides/:id/decline`). Événement `offer`, notification push et son sur son téléphone.
+3. Sans réponse ou en cas de refus, la course passe au suivant. Après `maxOffers` chauffeurs (3), ou s'il n'y a personne, elle est **ouverte à tous** les chauffeurs proches (premier qui accepte).
+
+Mode **« ouverte à tous »** : chaque demande est tout de suite visible par tous.
+
+`dispatchTick()` est appelée toutes les 3 s (`jobs.ts`) et juste après chaque commande. La table `ride_offers` garde chaque proposition et sa réponse (pour le taux d'acceptation). L'acceptation est protégée par une condition SQL (ouverte à tous **ou** proposée à ce chauffeur et encore valable) : impossible de « voler » une course proposée à un autre.
+
+## `notifications.ts` et `push.ts` — prévenir les utilisateurs
+
+- **`notifyUsers(ids, titre, texte, options)`** : notification dans l'application (cloche 🔔, table `notifications`), **push** sur le téléphone, et **SMS** en option.
+- **`push.ts`** (paquet `web-push`) : clés VAPID dans `.env` ou créées une fois dans `data/vapid.json`. `sendPush(utilisateur, message)` envoie à tous ses appareils ; un abonnement expiré est oublié automatiquement.
+- **Messages groupés** (`broadcast`) : à tous les chauffeurs, aux chauffeurs validés, aux chauffeurs en ligne, à tous les passagers, ou à tout le monde ; historique dans `broadcasts`.
+- Notifications envoyées automatiquement : chauffeur trouvé, chauffeur arrivé, course terminée, aucun chauffeur, compte validé / suspendu, abonnement activé / refusé / bientôt expiré, document bientôt expiré, jours de parrainage offerts, réponse à une réclamation, annulation par l'équipe.
+
+## `alerts.ts` — bouton d'urgence 🆘
+
+`createAlert` enregistre l'alerte (position si disponible), crée si besoin le lien de suivi de la course, prévient l'équipe (événement `alert` sur le canal `admins` + push à tous les administrateurs) et envoie un **SMS à la personne à prévenir** (renseignée dans le profil) avec le lien de suivi et la position. `handleAlert` la marque traitée avec une note.
+
+## `rides.ts` — nouveautés
+
+- **Réservation à l'avance** (`scheduled_at`) : de 20 minutes à 7 jours. La course reste invisible des chauffeurs jusqu'à 15 min avant l'heure ; elle expire 5 min après l'heure sans chauffeur.
+- **Commande pour un proche** (`rider_name`, `rider_phone`) : le chauffeur voit et appelle la personne transportée.
+- **Note du passager** par le chauffeur (`ratePassenger`), visible des chauffeurs sur les demandes suivantes.
+- **Partage** : `getShareToken` crée un jeton secret ; `trackSharedRide` renvoie ce qu'un proche peut voir (sans numéro), jusqu'à 1 h après la fin.
+- `createRide` reçoit le trajet déjà calculé par `routing.ts` (fonction synchrone, utilisable dans une transaction).
+
+## `places.ts`, `complaints.ts`, `referrals.ts`
+
+- **Lieux fréquents** (table `places`, gérée dans l'administration, remplie au départ avec 16 lieux de Korhogo) ; **favoris** des passagers (`saved_places` : Maison, Travail, autres) ; **dernières destinations** (tirées des courses terminées).
+- **Réclamations** : catégorie (objet perdu, prix, comportement, sécurité, itinéraire, autre), course concernée, réponse de l'équipe envoyée en notification.
+- **Parrainage** : code `SPXXXXX` par chauffeur ; au premier abonnement payé du filleul, le parrain reçoit `referralDays` jours d'abonnement (`addSubscriptionDays`). Aucun argent n'est versé.
+
+## `stats.ts` et `reports.ts`
+
+- **Statistiques du chauffeur** : gains et courses du jour / de la semaine, **minutes en ligne** (table `driver_online_log`, une ligne par période en ligne), taux d'acceptation, répartition des notes, parrainage.
+- **Zones demandées** : départs des 30 derniers jours regroupés en carrés d'environ 550 m (option : ± 1 h autour d'une heure).
+- **Rapport mensuel** : courses, annulations, montants, abonnements encaissés, nouveaux comptes, chauffeurs actifs, note et distance moyennes, courbe par jour, heures de pointe, meilleurs chauffeurs, zones.
+- **Exports CSV pour Excel** : séparateur « ; », encodage UTF-8 avec BOM (Excel en français l'ouvre correctement).
+
+## `permissions.ts` et `audit.ts` — rôles et journal
+
+| Rôle | Écrans |
+|---|---|
+| Accès complet | Tout |
+| Opérations | Courses, chauffeurs, passagers, urgences, réclamations, lieux |
+| Finances | Abonnements, tarifs et réglages, rapports, exports |
+| Modération | Avis, messages, réclamations |
+
+L'administrateur principal a toujours un accès complet et lui seul gère l'équipe. `audit(admin, action, cible, détails, ip)` inscrit chaque action dans `audit_log`.
+
+## `backup.ts` et `jobs.ts` — tâches de fond
+
+- **Sauvegardes** : copie cohérente de la base (API de sauvegarde de SQLite, sans arrêter le serveur) dans `data/backups/`, une fois par jour, gardée 30 jours.
+- **`jobs.ts`** démarre : l'attribution des courses (3 s), les rappels toutes les heures (abonnement à J-3 et J-1 par notification, push et SMS ; permis ou assurance qui expire dans 30 jours) et le ménage des codes SMS.
+
+---
+
+## Les tests automatiques (`tests/api.test.ts`)
+
+`npm test` (dans `Backend/` ou à la racine) lance l'API sur une **base temporaire** et rejoue 17 parcours réels par HTTP, avec le lanceur de tests intégré à Node :
+
+- santé, configuration publique, estimation de prix ;
+- inscription avec code SMS, blocage après 5 PIN faux, « PIN oublié » ;
+- cloisonnement Application / Administration ;
+- attribution automatique, refus, deuxième chauffeur validé et abonné qui accepte, course complète, notes croisées, statistiques ;
+- commande sans compte puis création du compte (course conservée) ;
+- réservation invisible des chauffeurs, réservation trop proche refusée ;
+- tarifs modifiés appliqués et inscrits au journal ; rôle « modération » limité ;
+- export Excel, alerte d'urgence, rapport du mois, sauvegarde ;
+- copies de `Commun/` à jour.
+
+Lancez-les après chaque modification du Backend : s'ils passent tous, les parcours principaux fonctionnent toujours.

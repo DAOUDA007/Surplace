@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ComplaintButton } from "@/components/ComplaintButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Route, StatusBadge } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
@@ -52,6 +53,8 @@ export function HistoryPage({
                   {formatFcfa(r.price)}
                 </span>
               </div>
+              {r.riderName && <p className="text-xs text-muted">👤 Pour {r.riderName}</p>}
+              <ComplaintButton rideId={r.id} />
             </li>
           ))}
         </ul>

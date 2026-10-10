@@ -1,7 +1,10 @@
 import { db } from "./db";
 import { publishToUser } from "./events";
 import { HttpError } from "./http";
+import { notifyUser } from "./notifications";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "./pricing";
+import { rewardReferral } from "./referrals";
+import { getSettings } from "./settings";
 
 export interface SubscriptionRecord {
   id: number;
@@ -55,7 +58,25 @@ function extend(subscriptionId: number, driverId: number, plan: SubscriptionPlan
   ).run(now, start.toISOString(), end.toISOString(), subscriptionId);
   db.prepare("UPDATE drivers SET subscription_until = ? WHERE user_id = ?").run(end.toISOString(), driverId);
   publishToUser(driverId, { type: "profile" });
+  notifyUser(driverId, "Abonnement activé ✅", `Votre abonnement est valable jusqu'au ${end.toLocaleDateString("fr-FR")}.`, {
+    url: "/chauffeur",
+  });
+  // Premier abonnement payé d'un chauffeur parrainé : son parrain reçoit des jours offerts.
+  rewardReferral(driverId);
 }
+
+/** Ajoute des jours d'abonnement offerts (parrainage), à partir de la fin de l'abonnement en cours. */
+export function addSubscriptionDays(driverId: number, days: number) {
+  const until = getUntil(driverId);
+  const start = isSubscriptionActive(until) ? new Date(until!) : new Date();
+  const end = new Date(start.getTime() + days * 86_400_000);
+  db.prepare("UPDATE drivers SET subscription_until = ? WHERE user_id = ?").run(end.toISOString(), driverId);
+  publishToUser(driverId, { type: "profile" });
+  return end;
+}
+
+/** Prix actuel d'une formule (réglable dans l'administration). */
+export const planPrice = (plan: SubscriptionPlan) => getSettings().plans[plan];
 
 /** Abonnement du chauffeur : état actuel, demande en attente et historique des paiements. */
 export function getDriverSubscription(driverId: number) {
@@ -67,6 +88,7 @@ export function getDriverSubscription(driverId: number) {
     daysLeft: until ? Math.max(0, Math.ceil((new Date(until).getTime() - Date.now()) / 86_400_000)) : 0,
     pending: history.find((s) => s.status === "pending") ?? null,
     history: history.filter((s) => s.status === "paid"),
+    prices: { ...getSettings().plans },
   };
 }
 
@@ -79,7 +101,7 @@ export function requestSubscription(driverId: number, plan: unknown) {
   if (pending) throw new HttpError(409, "Vous avez déjà une demande d'abonnement en attente.");
   db.prepare(
     "INSERT INTO subscriptions (driver_id, plan, amount, status, requested_at) VALUES (?, ?, ?, 'pending', ?)",
-  ).run(driverId, plan, SUBSCRIPTION_PLANS[plan].price, new Date().toISOString());
+  ).run(driverId, plan, planPrice(plan), new Date().toISOString());
   return getDriverSubscription(driverId);
 }
 
@@ -100,6 +122,9 @@ export function reviewSubscriptionRequest(subscriptionId: number, approve: boole
   } else {
     db.prepare("UPDATE subscriptions SET status = 'rejected' WHERE id = ?").run(sub.id);
     publishToUser(sub.driverId, { type: "profile" });
+    notifyUser(sub.driverId, "Demande d'abonnement refusée", "Contactez SURPLACE pour plus d'informations.", {
+      url: "/chauffeur",
+    });
   }
 }
 
@@ -116,7 +141,7 @@ export function recordSubscriptionPayment(driverId: number, plan: unknown) {
       .prepare(
         "INSERT INTO subscriptions (driver_id, plan, amount, status, requested_at) VALUES (?, ?, ?, 'pending', ?)",
       )
-      .run(driverId, plan, SUBSCRIPTION_PLANS[plan].price, new Date().toISOString());
+      .run(driverId, plan, planPrice(plan), new Date().toISOString());
     extend(Number(res.lastInsertRowid), driverId, plan);
   })();
 }
@@ -151,7 +176,13 @@ export function enforceSubscription(driverId: number) {
   const busy = db
     .prepare("SELECT 1 FROM rides WHERE driver_id = ? AND status IN ('accepted', 'arrived', 'in_progress')")
     .get(driverId);
-  if (!busy) db.prepare("UPDATE drivers SET is_online = 0 WHERE user_id = ?").run(driverId);
+  if (!busy) {
+    db.prepare("UPDATE drivers SET is_online = 0 WHERE user_id = ?").run(driverId);
+    db.prepare("UPDATE driver_online_log SET ended_at = ? WHERE driver_id = ? AND ended_at IS NULL").run(
+      new Date().toISOString(),
+      driverId,
+    );
+  }
 }
 
 export function getSubscriptionStats() {

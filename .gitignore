@@ -9,3 +9,7 @@ Backend/data/*.db-*
 Application/certificates/
 Backend/.env
 Backend/data/emails/
+Backend/data/sms/
+Backend/data/uploads/
+Backend/data/backups/
+Backend/data/vapid.json

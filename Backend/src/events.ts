@@ -22,3 +22,11 @@ export function subscribe(channel: string, listener: (event: ServerEvent) => voi
     bus.off(channel, listener);
   };
 }
+
+/** Nombre de connexions temps réel ouvertes (écrans connectés). */
+export function connectedClients() {
+  return bus
+    .eventNames()
+    .filter((name) => String(name).startsWith("user:"))
+    .reduce((sum, name) => sum + bus.listenerCount(name), 0);
+}

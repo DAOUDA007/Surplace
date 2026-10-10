@@ -172,3 +172,55 @@ db.transaction(() => { ... })()                                  // tout ou rien
 Les `?` sont remplacés par les valeurs de façon sûre : même si quelqu'un tape `'; DROP TABLE users; --` dans un champ, c'est traité comme du texte. C'est la protection contre **l'injection SQL**.
 
 Les seuls endroits où du texte est collé directement dans le SQL (`${where}`, `${column}`, `ACTIVE_SQL`) utilisent des valeurs **écrites dans le code**, jamais des saisies d'utilisateur.
+
+---
+
+## Tables et colonnes ajoutées avec les nouvelles fonctionnalités
+
+Elles sont créées par `migrateFeatures()` (dans `db.ts`) au démarrage, sur une base neuve comme sur une base existante : rien à faire à la main. La fonction `addColumn(table, colonne, définition)` n'ajoute une colonne que si elle manque.
+
+### Colonnes ajoutées
+
+| Table | Colonnes | Rôle |
+|---|---|---|
+| `users` | `rating_sum`, `rating_count` | Note des **passagers** donnée par les chauffeurs |
+| `users` | `emergency_contact_name`, `emergency_contact_phone` | Personne à prévenir (bouton 🆘) |
+| `users` | `admin_role` | Rôle d'un administrateur : `full`, `operations`, `finance`, `moderation` |
+| `users` | `referral_code` (unique) | Code de parrainage d'un chauffeur |
+| `drivers` | `referred_by`, `referral_rewarded` | Parrain du chauffeur ; récompense déjà donnée ? |
+| `drivers` | `reminder3_for`, `reminder1_for` | Date d'expiration déjà rappelée à J-3 / J-1 (pas de rappel en double) |
+| `rides` | `scheduled_at` | Réservation à l'avance |
+| `rides` | `rider_name`, `rider_phone` | Course commandée pour un proche |
+| `rides` | `share_token` (unique) | Lien secret de suivi partagé |
+| `rides` | `passenger_rating`, `passenger_comment` | Note du passager par le chauffeur |
+| `rides` | `offer_driver_id`, `offer_expires_at`, `dispatch_open` | Attribution : chauffeur sollicité et jusqu'à quand ; 1 = ouverte à tous |
+| `rides` | `route_source` | `osrm` (distance par la route) ou `estimate` (ligne droite) |
+
+### Nouvelles tables
+
+| Table | Contenu |
+|---|---|
+| `audit_log` | Journal des actions des administrateurs (qui, quoi, sur quoi, détails, IP, date) |
+| `otp_codes` | Codes SMS (hachés), but, essais, expiration, utilisation |
+| `settings` | Réglages de l'application (une ligne `app`, en JSON) |
+| `driver_documents` | Un document par type et par chauffeur : fichier, type d'image, date d'expiration, date d'envoi, dernier rappel |
+| `saved_places` | Lieux favoris des passagers (Maison, Travail, autres) |
+| `emergency_alerts` | Alertes 🆘 : qui, course, position, date, traitée par / quand / note |
+| `complaints` | Réclamations : course, catégorie, message, statut, réponse de l'équipe |
+| `ride_offers` | Propositions de course aux chauffeurs et leur réponse (`pending`, `accepted`, `declined`, `expired`, `cancelled`) |
+| `notifications` | Notifications de la cloche 🔔 (lue ou non) |
+| `push_subscriptions` | Téléphones abonnés aux notifications push |
+| `driver_online_log` | Périodes en ligne des chauffeurs (début, fin) pour les statistiques |
+| `places` | Lieux fréquents de Korhogo, gérés dans l'administration |
+| `broadcasts` | Historique des messages groupés |
+
+### Fichiers à côté de la base
+
+| Dossier / fichier | Contenu | Git |
+|---|---|---|
+| `data/backups/` | Sauvegardes quotidiennes (30 jours) | ignoré |
+| `data/uploads/documents/` | Photos des documents des chauffeurs | ignoré |
+| `data/sms/` | SMS non envoyés (sans fournisseur) | ignoré |
+| `data/vapid.json` | Clés des notifications push (à ne pas perdre) | ignoré |
+
+⚠️ Sauvegardez aussi `data/uploads/` et `data/vapid.json` lors d'un changement de serveur : la base seule ne contient pas les photos.

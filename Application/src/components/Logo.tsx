@@ -1,3 +1,4 @@
+// ⚠️ Fichier copié depuis Commun/components/Logo.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 import Link from "next/link";
 
 export function Logo({ href = "/", light = false }: { href?: string; light?: boolean }) {

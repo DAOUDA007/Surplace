@@ -222,3 +222,49 @@ Mesure en continu (`ResizeObserver`) la hauteur du panneau du bas **sur mobile**
 | `geolocation.ts` | `locateUser(onUpdate)` : utilise `watchPosition` pour **affiner** la position (la première lecture vient souvent du réseau, imprécise ; le GPS arrive ensuite). S'arrête dès que la précision atteint 30 m ou après 15 s, et renvoie la meilleure lecture. Si le GPS ne répond pas, tente une position approximative. `geolocationErrorMessage` traduit chaque échec (pas https, refusé, introuvable, trop long) en conseil compréhensible. |
 | `format.ts` | `STATUS_LABELS` (« Chauffeur en route »…), `STATUS_STYLES` (couleurs des pastilles), `formatDateTime` (« 5 oct., 14:32 »), `formatPhone` (« 07 00 00 00 01 »), `minutesFromKm`. |
 | `theme.ts` | `THEME_STORAGE_KEY` et `THEME_INIT_SCRIPT` (script minifié exécuté dans `<head>` avant l'affichage). |
+
+---
+
+## Composants ajoutés
+
+### Partagés (`Commun/`)
+
+| Fichier | Rôle |
+|---|---|
+| `components/OtpField.tsx` | « Recevoir le code » + champ à 6 chiffres ; compte à rebours avant renvoi ; affiche le code en mode test |
+| `components/PinResetForm.tsx` | PIN oublié : numéro, code SMS, nouveau PIN (utilisé par les deux sites) |
+| `components/PwaSetup.tsx` | Enregistre `/sw.js` ; `InstallButton` affiche « 📲 Installer l'application » quand le téléphone le propose |
+| `components/LeafletMap.tsx` | Nouveau : `route` accepte un **tracé complet** (ligne orange pleine) ; `heat` dessine les **zones demandées** (cercles plus grands et plus foncés là où il y a le plus de demandes) |
+| `components/ProfileForm.tsx` | Nouveau : **personne à prévenir** en cas d'urgence ; code SMS si le numéro change |
+| `hooks/usePublicConfig.ts` | Charge une fois `/api/public/config` (tarifs, majorations, lieux, `otpRequired`) et le partage entre composants |
+| `hooks/useServerEvents.ts` | Déplacé dans `Commun/` (utilisé aussi par l'Administration pour les alertes) |
+| `lib/preferences.ts` | Mode simple, **annonces vocales** (`announce` : voix du téléphone en français, ou fichiers `public/annonces/<langue>/<événement>.mp3` en dioula / sénoufo), économie de batterie, `beep` (signal sonore + vibration, sans fichier audio) |
+| `lib/push.ts` | `enablePush` (autorisation + abonnement), `disablePush`, `refreshPushSubscription` |
+| `public/sw.js` | Service worker : affiche les notifications push, ouvre la bonne page au toucher, page « Pas de connexion internet » |
+
+### Application
+
+| Fichier | Rôle |
+|---|---|
+| `PassengerApp.tsx` | **Prix calculé par le serveur** (`/api/estimate`, tracé routier si OSRM) avec majorations affichées ; raccourcis **favoris / dernières destinations** et « Enregistrer cette destination » (Maison, Travail, Favori) ; options **Maintenant / Plus tard** (réservation) et **Pour moi / Un proche** ; code SMS pour les invités ; écran « Course réservée » ; photo du chauffeur ; boutons **Partager ma course** et **🆘 Urgence** ; annonces vocales à chaque étape ; invitation à activer les notifications |
+| `DriverApp.tsx` | Demandes : carte orange **« Course proposée pour vous »** avec compte à rebours, boutons Refuser / Accepter ; **son + vibration** à chaque nouvelle demande ; **écran maintenu allumé** en ligne (Wake Lock) ; **économie de batterie** (GPS moins précis, position envoyée moins souvent) ; bouton **🔥 Zones demandées** ; bandeau des documents manquants ; rappel d'abonnement ; après la course, **note du passager** ; pendant la course, partage et urgence, et appel de la personne transportée si la course est pour un proche |
+| `AppMenu.tsx` | Cloche 🔔 avec nombre de non lues (temps réel) ; réglages : thème, **mode simple**, **annonces vocales** + langue, **notifications sur le téléphone**, **économie de batterie** (chauffeurs), installer l'application |
+| `EmergencyButton.tsx` | Fenêtre d'urgence : « Prévenir SURPLACE maintenant » (position envoyée), ligne d'urgence SURPLACE, police (110, 111), pompiers (180), SAMU (185), partage WhatsApp |
+| `ShareRideButton.tsx` | Crée le lien de suivi et ouvre le menu de partage du téléphone (ou WhatsApp) |
+| `TrackView.tsx` | Page de suivi d'un proche : carte, étape, chauffeur, photo |
+| `DocumentsPanel.tsx` | Documents du chauffeur : photo prise avec l'appareil (`capture`), **réduite avant l'envoi** (1600 px, JPEG) pour économiser les données, date d'expiration, état (à envoyer, envoyé, expire bientôt, expiré) |
+| `ReferralCard.tsx` | Code de parrainage, copier, partager sur WhatsApp |
+| `ComplaintButton.tsx` | « Signaler un problème » sur chaque course de l'historique |
+| `NotificationsList.tsx` | Liste des notifications |
+| `DriverPhoto.tsx` | Photo du chauffeur, ou son initiale |
+
+### Administration
+
+| Fichier | Rôle |
+|---|---|
+| `AdminShell.tsx` | Menu filtré selon le **rôle** ; pastilles Urgences et Réclamations ; **bandeau rouge clignotant** et **alarme sonore** à chaque nouvelle alerte (temps réel, canal `admins`) ; « Recevoir les alertes d'urgence ici » (push sur le téléphone de l'équipe) |
+| `AlertsPage.tsx`, `ComplaintsPage.tsx`, `ReportsPage.tsx`, `BroadcastPage.tsx`, `SettingsPage.tsx`, `PlacesPage.tsx`, `AuditPage.tsx`, `SystemPage.tsx` | Les nouveaux écrans (voir [06-frontend-pages.md](06-frontend-pages.md)) |
+| `DriversPage.tsx` | Fiche dépliée : **vignettes des documents** (cliquables), dates d'expiration en couleur, parrain |
+| `PassengersPage.tsx` | Note donnée par les chauffeurs (en rouge sous 3) |
+| `AdminsPage.tsx` | Choix du **rôle** à l'ajout et dans la liste (administrateur principal) |
+| `OverviewPage.tsx` | « À traiter » : urgences, réclamations, documents expirés en plus |

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { OtpField } from "@/components/OtpField";
 import { Button, ErrorMessage } from "@/components/ui";
+import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { api } from "@/lib/api";
 
 const inputClass =
@@ -83,6 +85,11 @@ export function LoginForm() {
       <Field label="Code PIN">
         <PinInput value={pin} onChange={setPin} />
       </Field>
+      <p className="-mt-2 text-right text-sm">
+        <Link href="/pin-oublie" className="font-semibold text-brand">
+          Code PIN oublié ?
+        </Link>
+      </p>
       <ErrorMessage>{error}</ErrorMessage>
       <Button type="submit" loading={loading} className="w-full">
         Se connecter
@@ -116,9 +123,15 @@ export function RegisterForm({
     plate: "",
     motoModel: "",
     licenseNumber: "",
+    referralCode: "",
+    code: "",
   });
   const { submit, error, loading } = useSubmit();
+  const config = usePublicConfig();
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
+  // Un invité qui garde son numéro l'a déjà confirmé par SMS lors de sa commande.
+  const keepsGuestNumber = guest && role === "passenger" && form.phone.replace(/\D/g, "") === defaults?.phone;
+  const needCode = !!config?.otpRequired && !keepsGuestNumber;
 
   return (
     <form
@@ -217,19 +230,29 @@ export function RegisterForm({
               className={inputClass}
             />
           </Field>
+          <Field label="Code de parrainage (facultatif)" hint="Donné par un chauffeur SURPLACE : il recevra des jours d'abonnement offerts.">
+            <input
+              value={form.referralCode}
+              onChange={(e) => set("referralCode")(e.target.value.toUpperCase().replace(/\s/g, ""))}
+              placeholder="Ex. SP7K2QX"
+              className={inputClass}
+            />
+          </Field>
           <p className="text-xs text-muted">
-            Votre compte sera vérifié par l&apos;équipe SURPLACE (moto et permis) avant de pouvoir recevoir des courses.
+            Votre compte sera vérifié par l&apos;équipe SURPLACE (moto, permis et documents) avant de pouvoir recevoir des
+            courses. Après l&apos;inscription, envoyez les photos de vos documents depuis « Profil et documents ».
           </p>
         </div>
       )}
 
+      {needCode && <OtpField phone={form.phone} purpose="register" value={form.code} onChange={set("code")} />}
       {guest && role === "passenger" && (
         <p className="rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">
           Vos courses déjà commandées sans compte seront conservées.
         </p>
       )}
       <ErrorMessage>{error}</ErrorMessage>
-      <Button type="submit" loading={loading} className="w-full">
+      <Button type="submit" loading={loading} disabled={needCode && form.code.length !== 6} className="w-full">
         Créer mon compte
       </Button>
       <p className="text-center text-sm text-muted">

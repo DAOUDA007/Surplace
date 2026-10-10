@@ -103,6 +103,11 @@ export function PassengersPage() {
                       </p>
                       <p className="text-xs text-muted">{formatPhone(p.phone)}</p>
                       {p.email && <p className="text-xs text-muted">{p.email}</p>}
+                      {p.rating != null && (
+                        <p className={`text-xs ${p.rating < 3 ? "font-semibold text-red-600" : "text-muted"}`} title="Note donnée par les chauffeurs">
+                          ★ {p.rating.toFixed(1)} par les chauffeurs
+                        </p>
+                      )}
                     </td>
                     <td className={`${td} whitespace-nowrap`}>{new Date(p.createdAt).toLocaleDateString("fr-FR")}</td>
                     <td className={td}>

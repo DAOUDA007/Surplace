@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, ErrorMessage } from "@/components/ui";
@@ -63,9 +64,13 @@ export function LoginForm() {
       <Button type="submit" loading={loading} variant="dark" className="w-full">
         Se connecter
       </Button>
+      <p className="text-center text-sm">
+        <Link href="/pin-oublie" className="font-semibold text-brand">
+          Code PIN oublié ?
+        </Link>
+      </p>
       <p className="text-center text-xs text-muted">
-        PIN oublié ? L&apos;administrateur principal peut le réinitialiser depuis le serveur :{" "}
-        <code className="rounded bg-subtle px-1">npm run reset-admin-pin</code> (dossier Backend).
+        Sans SMS : dans le dossier Backend, <code className="rounded bg-subtle px-1">npm run reset-admin-pin -- 4821</code>.
       </p>
     </form>
   );

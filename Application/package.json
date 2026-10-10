@@ -4,11 +4,13 @@
   "private": true,
   "description": "SURPLACE — application web des passagers et des chauffeurs (Next.js, port 3000)",
   "scripts": {
+    "predev": "node ../scripts/sync-commun.mjs",
     "dev": "next dev --turbopack -p 3000",
     "dev:https": "next dev --turbopack --experimental-https -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prebuild": "node ../scripts/sync-commun.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

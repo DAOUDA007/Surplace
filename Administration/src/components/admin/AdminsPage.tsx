@@ -6,14 +6,20 @@ import { Button, ErrorMessage } from "@/components/ui";
 import { useAdminAction, useAdminData } from "@/hooks/useAdminData";
 import { api } from "@/lib/api";
 import { formatPhone } from "@/lib/format";
-import type { AdminAccount, User } from "@/lib/types";
+import { ROLE_LABELS } from "@/lib/permissions";
+import type { AdminAccount, AdminRole, User } from "@/lib/types";
 import { ActionButton, Card, LoadingRows, PageError, PageHeader, TableWrap, td, th } from "./ui";
 
 const inputClass =
   "h-11 w-full rounded-2xl border border-line bg-surface px-4 text-sm outline-none transition focus:border-ink";
 
 function AddAdminForm({ onAdded }: { onAdded: () => void }) {
-  const [form, setForm] = useState({ name: "", phone: "", pin: "" });
+  const [form, setForm] = useState<{ name: string; phone: string; pin: string; adminRole: AdminRole }>({
+    name: "",
+    phone: "",
+    pin: "",
+    adminRole: "operations",
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +29,7 @@ function AddAdminForm({ onAdded }: { onAdded: () => void }) {
     setLoading(true);
     try {
       await api("/api/admin/admins", form);
-      setForm({ name: "", phone: "", pin: "" });
+      setForm({ name: "", phone: "", pin: "", adminRole: "operations" });
       onAdded();
     } catch (err) {
       setError((err as Error).message);
@@ -59,6 +65,20 @@ function AddAdminForm({ onAdded }: { onAdded: () => void }) {
           className={inputClass}
         />
       </div>
+      <label className="block text-sm font-semibold">
+        Rôle
+        <select
+          value={form.adminRole}
+          onChange={(e) => setForm((f) => ({ ...f, adminRole: e.target.value as AdminRole }))}
+          className={`${inputClass} mt-1`}
+        >
+          {(Object.keys(ROLE_LABELS) as AdminRole[]).map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABELS[r].label} — {ROLE_LABELS[r].description}
+            </option>
+          ))}
+        </select>
+      </label>
       <p className="text-xs text-muted">
         Communiquez le code PIN provisoire au nouvel administrateur : il pourra le changer dans « Mon compte ».
       </p>
@@ -129,9 +149,24 @@ export function AdminsPage({ user }: { user: User }) {
                     </td>
                     <td className={td}>
                       {a.isPrincipal ? (
-                        <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-white">👑 Principal</span>
+                        <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-white">👑 Principal (accès complet)</span>
+                      ) : principal ? (
+                        <select
+                          value={a.adminRole}
+                          onChange={(e) => action.run(`r-${a.id}`, `/api/admin/admins/${a.id}/role`, { role: e.target.value })}
+                          className="h-9 rounded-xl border border-line bg-surface px-2 text-sm"
+                          title={ROLE_LABELS[a.adminRole].description}
+                        >
+                          {(Object.keys(ROLE_LABELS) as AdminRole[]).map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABELS[r].label}
+                            </option>
+                          ))}
+                        </select>
                       ) : (
-                        <span className="text-muted">Administrateur</span>
+                        <span className="text-muted" title={ROLE_LABELS[a.adminRole].description}>
+                          {ROLE_LABELS[a.adminRole].label}
+                        </span>
                       )}
                     </td>
                     <td className={td}>

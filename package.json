@@ -7,7 +7,9 @@
     "dev": "concurrently -n api,app,admin -c blue,magenta,green \"npm run dev --prefix Backend\" \"npm run dev --prefix Application\" \"npm run dev --prefix Administration\"",
     "dev:https": "concurrently -n api,app,admin -c blue,magenta,green \"npm run dev --prefix Backend\" \"npm run dev:https --prefix Application\" \"npm run dev --prefix Administration\"",
     "build": "npm run build --prefix Application && npm run build --prefix Administration",
-    "start": "concurrently -n api,app,admin -c blue,magenta,green \"npm start --prefix Backend\" \"npm start --prefix Application\" \"npm start --prefix Administration\""
+    "start": "concurrently -n api,app,admin -c blue,magenta,green \"npm start --prefix Backend\" \"npm start --prefix Application\" \"npm start --prefix Administration\"",
+    "test": "npm test --prefix Backend",
+    "sync": "node scripts/sync-commun.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

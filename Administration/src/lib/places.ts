@@ -1,3 +1,4 @@
+// ⚠️ Fichier copié depuis Commun/lib/places.ts par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 import type { LatLng, Place } from "./types";
 
 export const CITY_NAME = "Korhogo";
@@ -27,10 +28,14 @@ function normalize(s: string) {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-export function searchPopularPlaces(query: string): Place[] {
+/**
+ * Lieux fréquents correspondant à la saisie. `places` : la liste gérée dans l'administration
+ * (POPULAR_PLACES ne sert qu'en secours, si le serveur ne répond pas).
+ */
+export function searchPopularPlaces(query: string, places: Place[] = POPULAR_PLACES): Place[] {
   const q = normalize(query.trim());
-  if (!q) return POPULAR_PLACES.slice(0, 6);
-  return POPULAR_PLACES.filter((p) => normalize(p.label).includes(q)).slice(0, 6);
+  if (!q) return places.slice(0, 6);
+  return places.filter((p) => normalize(p.label).includes(q)).slice(0, 6);
 }
 
 const NOMINATIM = "https://nominatim.openstreetmap.org";

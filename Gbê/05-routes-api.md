@@ -1,98 +1,116 @@
 # 5. Toutes les routes de l'API
 
-Toutes déclarées dans `Backend/src/server.ts`, toutes préfixées par `/api`.
-Depuis le navigateur, on les appelle sur le port du site visité (`http://localhost:3000/api/...` pour l'Application, `http://localhost:3001/api/...` pour l'Administration) ; Next.js les relaie au Backend.
+Déclarées dans `Backend/src/app.ts`, toutes préfixées par `/api`. Depuis le navigateur, on les appelle sur le site visité (`http://localhost:3000/api/...` pour l'Application, `http://localhost:3001/api/...` pour l'Administration) ; Next.js les relaie au Backend.
 
-**Légende « Accès »** : 🌐 public · 👤 tout utilisateur connecté · 🙋 passager · 🏍️ chauffeur · 🛡️ admin · 👑 admin principal
+**Accès** : 🌐 public · 👤 tout utilisateur connecté · 🙋 passager · 🏍️ chauffeur · 🛡️ admin (avec le **droit** indiqué) · 👑 admin principal
 
-Toutes les réponses sont en JSON. En cas d'erreur : `{ "error": "message en français" }` avec le code HTTP adapté.
+Réponses en JSON ; en cas d'erreur `{ "error": "message en français" }`. Lectures en `GET`, toutes les modifications en `POST`. Toutes les routes sont limitées à 600 requêtes par minute et par adresse IP (`limits.ts`).
 
-Convention : les lectures utilisent `GET`, **toutes** les modifications utilisent `POST` (y compris les suppressions, avec `/delete` dans l'adresse). C'est un choix de simplicité : la fonction `api()` des sites n'a besoin que de deux méthodes.
+## Configuration, prix et codes SMS
 
-## Authentification et profil
+| Méthode | Adresse | Accès | Envoi | Réponse / Effet |
+|---|---|---|---|---|
+| GET | `/public/config` | 🌐 | — | Réglages (tarifs, majorations, abonnements, attribution), majoration en cours, `otpRequired`, clé push, lieux fréquents |
+| POST | `/estimate` | 🌐 | `pickup, dropoff, scheduledAt?` | `{ estimate }` : distance, durée, prix, majorations, tracé (OSRM). 60 / minute / IP |
+| POST | `/otp` | 🌐 | `phone, purpose` (`register` · `guest` · `reset` · `phone`) | Envoie un code à 6 chiffres par SMS (`devCode` en développement). 3 / 15 min par numéro, 10 / h par IP |
 
-| Méthode | Adresse | Accès | Corps envoyé | Réponse / Effet | Code métier |
-|---|---|---|---|---|---|
-| POST | `/auth/register` | 🌐 | `role, name, phone, pin, email?` (+ `plate, motoModel, licenseNumber` si chauffeur) | Crée le compte, connecte, `{ redirect }`. Si l'appelant est un **invité**, transforme son compte au lieu d'en créer un | `server.ts` |
-| POST | `/auth/login` | 🌐 | `phone, pin, space?` | Connecte, `{ redirect }`. `space: "admin"` = Administration (admins seulement) ; sans `space` = Application (admins refusés) | `server.ts` |
-| POST | `/auth/logout` | 🌐 | — | Déconnecte, `{ redirect: "/" }` | `auth.ts › destroySession` |
-| GET | `/me` | 👤 | — | `{ user, driver }` (`driver` = profil chauffeur ou `null`) | `drivers.ts › getDriverProfile` |
-| POST | `/me/profile` | 👤 | `name, phone, email?` (+ `plate, motoModel, licenseNumber`) | `{ revalidation }`. Refusé (403) pour un invité | `accounts.ts › updateProfile` |
-| POST | `/me/pin` | 👤 | `currentPin, newPin` | `{ ok }` | `accounts.ts › changePin` |
+## Authentification et compte
+
+| Méthode | Adresse | Accès | Envoi | Effet |
+|---|---|---|---|---|
+| POST | `/auth/register` | 🌐 | `role, name, phone, pin, email?, code` (+ `plate, motoModel, licenseNumber, referralCode?`) | Inscription (code SMS vérifié). Un invité est transformé en vrai compte |
+| POST | `/auth/login` | 🌐 | `phone, pin, space?` | Connexion. 5 échecs par numéro / 30 par IP en 15 min → bloqué. `space: "admin"` = Administration |
+| POST | `/auth/reset-pin` | 🌐 | `phone, code, pin` | Nouveau code PIN (code SMS « reset ») ; ferme les sessions |
+| POST | `/auth/logout` | 🌐 | — | Déconnexion |
+| GET | `/me` | 👤 | — | `{ user, driver }` (droits pour un admin, contact d'urgence…) |
+| POST | `/me/profile` | 👤 (pas invité) | `name, phone, email?, code?, emergencyContactName?, emergencyContactPhone?` (+ moto, permis) | Nouveau numéro → code SMS obligatoire |
+| POST | `/me/pin` | 👤 (pas invité) | `currentPin, newPin` | Change le PIN |
+| GET | `/me/places` | 🙋 | — | `{ saved, recent }` : lieux favoris et 5 dernières destinations |
+| POST | `/me/places` | 🙋 | `kind (home/work/other), label, lat, lng` | Ajoute un favori (Maison/Travail remplacent l'ancien) |
+| POST | `/me/places/:id/delete` | 🙋 | — | Supprime un favori |
+| GET | `/me/notifications` | 👤 | — | `{ items, unread }` |
+| POST | `/me/notifications/read` | 👤 | — | Tout marquer lu |
+| GET | `/me/complaints` | 👤 | — | Mes réclamations et leurs réponses |
+| POST | `/complaints` | 👤 | `rideId?, category, message` | Nouvelle réclamation (5 en cours au maximum) |
+| POST | `/emergency` | 👤 | `rideId?, lat?, lng?` | 🆘 Alerte : équipe prévenue (push), SMS à la personne à prévenir. 3 / 10 min |
+
+## Notifications push
+
+| Méthode | Adresse | Accès | Effet |
+|---|---|---|---|
+| GET | `/push/key` | 🌐 | Clé publique VAPID |
+| POST | `/push/subscribe` | 👤 | Enregistre l'abonnement du téléphone (`subscription`) |
+| POST | `/push/unsubscribe` | 🌐 | Oublie un abonnement (`endpoint`) |
 
 ## Courses
 
-| Méthode | Adresse | Accès | Corps | Réponse / Effet | Code métier |
-|---|---|---|---|---|---|
-| GET | `/rides` | 👤 | — | `{ rides }` : 200 dernières courses de l'utilisateur | `rides.ts › listRides` |
-| POST | `/rides` | 🙋 | `pickup: {label,lat,lng}, dropoff: {...}` | `{ ride }` : course créée | `rides.ts › createRide` |
-| POST | `/rides/guest` | 🌐 (non connecté) | `name, phone, pickup, dropoff` | Crée un passager invité + sa course, le connecte sur cet appareil, `{ ride }`. 5 max / heure / IP | `accounts.ts › createGuestPassenger` + `rides.ts › createRide` |
-| GET | `/rides/current` | 👤 | — | `{ ride, rideToRate }` : course en cours, et course à noter (passager) | `rides.ts › getActiveRide, getRideToRate` |
-| POST | `/rides/:id/action` | 🙋🏍️ | `action`: `accept` · `arrive` · `start` · `complete` · `cancel` | `{ ride }` | `rides.ts › applyAction` |
-| POST | `/rides/:id/rate` | 🙋 | `rating` (1–5), `comment?` | `{ ride }` | `rides.ts › rateRide` |
+| Méthode | Adresse | Accès | Envoi | Effet |
+|---|---|---|---|---|
+| GET | `/rides` | 👤 | — | Mes 200 dernières courses |
+| POST | `/rides` | 🙋 | `pickup, dropoff, scheduledAt?, rider?: {name, phone}` | Commande (maintenant ou réservée, pour soi ou un proche) ; prix calculé par le serveur ; attribution lancée |
+| POST | `/rides/guest` | 🌐 non connecté | `name, phone, code, pickup, dropoff, scheduledAt?, rider?` | Commande sans compte (code SMS « guest ») ; crée le passager invité et le connecte. 5 / h / IP |
+| GET | `/rides/current` | 👤 | — | `{ ride, rideToRate }` |
+| POST | `/rides/:id/action` | 🙋🏍️ | `action`: `accept` · `arrive` · `start` · `complete` · `cancel` | Étapes de la course (voir 03) |
+| POST | `/rides/:id/decline` | 🏍️ | — | Refuse une course proposée (ou la masque si elle est ouverte à tous) |
+| POST | `/rides/:id/rate` | 🙋 | `rating, comment?` | Note du chauffeur |
+| POST | `/rides/:id/rate-passenger` | 🏍️ | `rating, comment?` | Note du passager |
+| POST | `/rides/:id/share` | 🙋🏍️ | — | `{ token, url }` : lien de suivi `…/suivi/<token>` |
+| GET | `/public/track/:token` | 🌐 | — | Suivi partagé (statut, chauffeur, position), valable jusqu'à 1 h après la fin |
+| GET | `/public/track/:token/photo` | 🌐 | — | Photo du chauffeur pour la page de suivi |
+| GET | `/drivers/:id/photo` | 👤 | — | Photo du chauffeur (admin, le chauffeur, ou passager d'une de ses courses des dernières 24 h) |
 
 ## Chauffeur
 
-| Méthode | Adresse | Accès | Corps | Réponse / Effet | Code métier |
-|---|---|---|---|---|---|
-| POST | `/driver/status` | 🏍️ | `online: true/false` | `{ driver }` | `drivers.ts › setDriverOnline` |
-| POST | `/driver/location` | 🏍️ | `lat, lng` | `{ ok }` + événement `location` au passager | `drivers.ts › updateDriverLocation` |
-| GET | `/driver/available` | 🏍️ | — | `{ rides }` : demandes à ≤ 10 km (vide si hors ligne ou non validé) | `rides.ts › listAvailableRides` |
-| GET | `/driver/subscription` | 🏍️ | — | État de l'abonnement | `subscriptions.ts › getDriverSubscription` |
-| POST | `/driver/subscription` | 🏍️ | `plan`: `monthly` · `yearly` | Nouvel état | `subscriptions.ts › requestSubscription` |
-| POST | `/driver/subscription/cancel` | 🏍️ | — | Nouvel état | `subscriptions.ts › cancelSubscriptionRequest` |
+| Méthode | Adresse | Accès | Envoi | Effet |
+|---|---|---|---|---|
+| POST | `/driver/status` | 🏍️ | `online` | En ligne / hors ligne (validation, abonnement et documents vérifiés) |
+| POST | `/driver/location` | 🏍️ | `lat, lng` | Position (événement `location` au passager) |
+| GET | `/driver/available` | 🏍️ | — | Demandes proposées à moi ou ouvertes à tous, à ≤ 10 km |
+| GET / POST | `/driver/subscription` | 🏍️ | `plan` (POST) | État / demande d'abonnement |
+| POST | `/driver/subscription/cancel` | 🏍️ | — | Annule la demande en attente |
+| GET | `/driver/documents` | 🏍️ | — | Mes documents |
+| POST | `/driver/documents` | 🏍️ | `type, data (image), expiresAt?` | Envoie / remplace un document (8 Mo max par requête) |
+| GET | `/driver/documents/:id/file` | 🏍️ | — | Voir mon document |
+| GET | `/driver/stats` | 🏍️ | — | Gains, heures en ligne, taux d'acceptation, notes, parrainage |
+| GET | `/driver/demand?hour=` | 🏍️ | — | Zones les plus demandées (30 jours, ± 1 h) |
 
-## Administration — lectures
+## Administration
 
-| Méthode | Adresse | Accès | Paramètres d'URL | Réponse | Code métier |
-|---|---|---|---|---|---|
-| GET | `/admin/counts` | 🛡️ | — | Nombres des pastilles du menu | `admin.ts › getAdminCounts` |
-| GET | `/admin/overview` | 🛡️ | — | `{ stats, days, onlineDrivers, activeRides }` | `admin.ts › getAdminOverview` |
-| GET | `/admin/rides` | 🛡️ | `status`, `q`, `driverId`, `passengerId` | `{ rides }` | `admin.ts › listAdminRides` |
-| GET | `/admin/drivers` | 🛡️ | `status`, `q` | `{ drivers }` | `admin.ts › listAdminDrivers` |
-| GET | `/admin/passengers` | 🛡️ | `status`, `q` | `{ passengers }` | `admin.ts › listAdminPassengers` |
-| GET | `/admin/subscriptions` | 🛡️ | — | `{ stats, subscriptions }` | `admin.ts › listAdminSubscriptions` |
-| GET | `/admin/reviews` | 🛡️ | — | `{ reviews }` | `public.ts › listReviewsForAdmin` |
-| GET | `/admin/messages` | 🛡️ | — | `{ messages }` | `public.ts › listContactMessages` |
-| GET | `/admin/admins` | 🛡️ | — | `{ admins }` | `accounts.ts › listAdmins` |
+Chaque route vérifie le **droit** du rôle de l'administrateur (`permissions.ts`). Toutes les actions (`POST`) sont inscrites au **journal**.
 
-Les paramètres d'URL s'écrivent ainsi : `/api/admin/rides?status=active&q=Koné`. Les fonctions `queryText` et `queryId` de `server.ts` les nettoient (texte ou nombre, sinon ignorés).
-
-## Administration — actions
-
-| Méthode | Adresse | Accès | Corps | Effet | Code métier |
-|---|---|---|---|---|---|
-| POST | `/admin/rides/:id/cancel` | 🛡️ | — | Annule une course active | `rides.ts › adminCancelRide` |
-| POST | `/admin/drivers/:id` | 🛡️ | `status`: `approved` · `suspended` | Valide ou suspend | `drivers.ts › setDriverStatus` |
-| POST | `/admin/drivers/:id/subscription` | 🛡️ | `plan` | Encaisse un abonnement directement | `subscriptions.ts › recordSubscriptionPayment` |
-| POST | `/admin/subscriptions/:id` | 🛡️ | `approve: true/false` | Paiement reçu / refus | `subscriptions.ts › reviewSubscriptionRequest` |
-| POST | `/admin/passengers/:id/block` | 🛡️ | `blocked: true/false` | Bloque / débloque | `admin.ts › setPassengerBlocked` |
-| POST | `/admin/reviews/:id` | 🛡️ | `hidden: true/false` | Masque / affiche un avis | `public.ts › setReviewHidden` |
-| POST | `/admin/messages/:id` | 🛡️ | `handled: true/false` | Marque traité / non traité | `public.ts › setMessageHandled` |
-| POST | `/admin/rides/:id/delete` | 🛡️ | — | Supprime une course terminée/annulée | `admin.ts › deleteRide` |
-| POST | `/admin/reviews/:id/delete` | 🛡️ | — | Supprime note + commentaire | `admin.ts › deleteReview` |
-| POST | `/admin/messages/:id/delete` | 🛡️ | — | Supprime un message | `admin.ts › deleteMessage` |
-| POST | `/admin/subscriptions/:id/delete` | 🛡️ | — | Supprime une demande/un paiement | `subscriptions.ts › deleteSubscription` |
-| POST | `/admin/passengers/:id/delete` | 🛡️ | — | Supprime ou anonymise | `accounts.ts › deleteMemberAccount` |
-| POST | `/admin/drivers/:id/delete` | 🛡️ | — | Supprime ou anonymise | `accounts.ts › deleteMemberAccount` |
-| POST | `/admin/admins` | 👑 | `name, phone, pin` | Ajoute un admin | `accounts.ts › createAdmin` |
-| POST | `/admin/admins/:id/block` | 👑 | `blocked: true/false` | Suspend / réactive | `accounts.ts › setAdminBlocked` |
-| POST | `/admin/admins/:id/delete` | 👑 | — | Supprime un admin | `accounts.ts › deleteAdmin` |
-| POST | `/admin/admins/:id/transfer` | 👑 | — | Cède le rôle principal | `accounts.ts › transferPrincipal` |
+| Domaine | Routes | Droit |
+|---|---|---|
+| Pastilles et vue d'ensemble | `GET /admin/counts`, `GET /admin/overview` | tous |
+| Courses | `GET /admin/rides`, `POST /admin/rides/:id/cancel`, `POST /admin/rides/:id/delete` | `rides` |
+| Chauffeurs | `GET /admin/drivers`, `POST /admin/drivers/:id` (`status`), `POST /admin/drivers/:id/delete`, `GET /admin/documents/:id/file` | `drivers` |
+| Encaissement direct | `POST /admin/drivers/:id/subscription` | `subscriptions` |
+| Passagers | `GET /admin/passengers`, `POST /admin/passengers/:id/block`, `POST /admin/passengers/:id/delete` | `passengers` |
+| Abonnements | `GET /admin/subscriptions`, `POST /admin/subscriptions/:id` (`approve`), `POST /admin/subscriptions/:id/delete` | `subscriptions` |
+| Avis | `GET /admin/reviews`, `POST /admin/reviews/:id` (`hidden`), `POST /admin/reviews/:id/delete` | `reviews` |
+| Messages de contact | `GET /admin/messages`, `POST /admin/messages/:id` (`handled`), `POST /admin/messages/:id/delete` | `messages` |
+| Réclamations | `GET /admin/complaints?status=`, `POST /admin/complaints/:id/resolve` (`note`), `POST /admin/complaints/:id/delete` | `complaints` |
+| Urgences | `GET /admin/alerts?status=`, `POST /admin/alerts/:id/handle` (`note`) | `alerts` |
+| Tarifs et réglages | `GET /admin/settings`, `POST /admin/settings` (`settings`) | `settings` |
+| Lieux fréquents | `GET /admin/places`, `POST /admin/places`, `POST /admin/places/:id`, `POST /admin/places/:id/delete` | `places` |
+| Messages groupés | `GET /admin/broadcasts`, `POST /admin/broadcasts` (`audience, title, message, sms`) | `broadcast` |
+| Rapports | `GET /admin/reports?month=AAAA-MM`, `GET /admin/demand?hour=` | `reports` |
+| Exports Excel (CSV) | `GET /admin/exports/:kind?month=` — `courses`, `abonnements`, `reclamations`, `chauffeurs`, `passagers` | `exports` |
+| Journal | `GET /admin/audit?q=` | `audit` |
+| Système | `GET /admin/system`, `POST /admin/system/backup` | `system` |
+| Administrateurs | `GET /admin/admins` (tous) ; 👑 `POST /admin/admins`, `/admin/admins/:id/block`, `/delete`, `/transfer`, `/role` | principal |
 
 ## Public et technique
 
-| Méthode | Adresse | Accès | Effet | Code métier |
-|---|---|---|---|---|
-| GET | `/public/reviews` | 🌐 | Note moyenne, répartition, derniers avis | `public.ts › getPublicReviews` |
-| POST | `/public/contact` | 🌐 | Enregistre un message (`name, phone, subject, message`), 3 max / 10 min / IP | `public.ts › createContactMessage` |
-| GET | `/events` | 👤 | Flux temps réel (Server-Sent Events) | `server.ts` + `events.ts` |
-| GET | `/health` | 🌐 | `{ ok: true }` | `server.ts` |
+| Méthode | Adresse | Accès | Effet |
+|---|---|---|---|
+| GET | `/public/reviews` | 🌐 | Avis publics de la page d'accueil |
+| POST | `/public/contact` | 🌐 | Formulaire de contact (3 / 10 min / IP) |
+| GET | `/events` | 👤 | Flux temps réel (SSE). Canaux : `user:<id>`, `drivers` (chauffeurs), `admins` (équipe) |
+| GET | `/health` | 🌐 | `{ ok, uptimeSeconds }`, ou 503 si la base ne répond pas (surveillance) |
 
 ## Tester une route à la main
 
-Le Backend étant lancé, dans un navigateur :
-- `http://localhost:4000/api/health` → `{"ok":true}`
-- `http://localhost:3000/api/public/reviews` → les avis (passe par le proxy Next.js)
-- `http://localhost:3001/api/admin/counts` → `401` sans session admin (Administration)
-- `http://localhost:3000/api/me` → `401` si vous n'êtes pas connecté, vos infos sinon (le cookie est envoyé automatiquement)
+- `http://localhost:4000/api/health` → `{"ok":true,…}`
+- `http://localhost:3000/api/public/config` → tarifs et lieux
+- `http://localhost:3001/api/admin/counts` → 401 sans session admin
+- Tous les parcours sont aussi rejoués automatiquement par `npm test` (voir [03-backend.md](03-backend.md)).

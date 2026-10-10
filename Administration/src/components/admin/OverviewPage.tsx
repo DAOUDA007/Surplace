@@ -71,7 +71,10 @@ export function OverviewPage() {
   const { stats, days, onlineDrivers, activeRides } = data;
 
   const todo = [
+    { count: stats.alertsOpen, label: "ALERTE(S) D'URGENCE à traiter tout de suite", href: "/alertes", icon: "🆘" },
     { count: stats.driversPending, label: "chauffeur(s) à valider", href: "/chauffeurs?statut=pending", icon: "🪪" },
+    { count: stats.complaintsOpen, label: "réclamation(s) à traiter", href: "/reclamations", icon: "📮" },
+    { count: stats.documentsExpiring, label: "document(s) de chauffeur expiré(s) ou bientôt expiré(s)", href: "/chauffeurs", icon: "📄" },
     { count: stats.subscriptionsPending, label: "paiement(s) d'abonnement à confirmer", href: "/abonnements", icon: "💳" },
     { count: stats.messagesUnread, label: "message(s) non traité(s)", href: "/messages", icon: "✉️" },
   ].filter((t) => t.count > 0);

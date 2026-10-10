@@ -1,6 +1,7 @@
 import type { Mail } from "../mailer";
 import { formatFcfa, PRICING, SUBSCRIPTION_PLANS } from "../pricing";
-import { CONTACT, SITE_URL } from "../site";
+import { SITE_URL } from "../config";
+import { CONTACT } from "../site";
 
 const BRAND = "#ff6b00";
 const INK = "#111827";

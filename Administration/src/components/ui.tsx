@@ -1,3 +1,4 @@
+// ⚠️ Fichier copié depuis Commun/components/ui.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/format";
 import type { RideStatus } from "@/lib/types";

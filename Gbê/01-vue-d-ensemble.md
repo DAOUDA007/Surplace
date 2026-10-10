@@ -14,7 +14,16 @@ Il y a aussi une **page d'accueil publique** (`/` de l'Application) avec présen
 
 **Commande sans compte** : un visiteur peut commander directement. Au moment de commander, il donne seulement son nom et son numéro ; il devient un **passager invité**, reconnu sur son téléphone. Il peut plus tard créer son compte (code PIN) en gardant ses courses.
 
-**Modèle économique** : aucune commission sur les courses. Le chauffeur paie un **abonnement** (1 000 FCFA/mois ou 10 000 FCFA/an) pour avoir le droit de travailler.
+**Modèle économique** : aucune commission sur les courses. Le chauffeur paie un **abonnement** (1 000 FCFA/mois ou 10 000 FCFA/an par défaut, réglable dans l'administration) pour avoir le droit de travailler. L'application ne gère aucun paiement en ligne : les courses se paient en espèces au chauffeur, les abonnements à SURPLACE.
+
+### Les fonctionnalités en un coup d'œil
+
+| Pour qui | Fonctionnalités |
+|---|---|
+| **Passagers** | Commande avec ou sans compte · prix calculé avant (par la route si OSRM est installé, majorations nuit / pluie) · favoris (Maison, Travail) et dernières destinations · réservation à l'avance · commande pour un proche · suivi de la moto en direct · photo du chauffeur · partage de la course avec un proche · bouton d'urgence 🆘 · notes · réclamations · notifications (y compris téléphone en veille) · mode simple et annonces vocales |
+| **Chauffeurs** | Inscription avec permis et code de parrainage · documents en photo (avec expiration) · propositions de course avec son, vibration et compte à rebours · écran maintenu allumé · zones les plus demandées · économie de batterie · note des passagers · statistiques (gains, heures en ligne, taux d'acceptation) · rappels d'abonnement · jours offerts par parrainage |
+| **Équipe** | Site séparé, rôles (complet, opérations, finances, modération) · urgences en temps réel avec alarme · validation des chauffeurs et de leurs documents · abonnements · réclamations, avis, messages · tarifs et réglages sans toucher au code · lieux fréquents · messages groupés · rapports mensuels et exports Excel · journal des actions · sauvegardes et état du système |
+| **Tout le monde** | Connexion protégée (5 essais), code SMS pour vérifier les numéros, « PIN oublié » par SMS, application installable sur le téléphone |
 
 ## Les étages de l'application
 
@@ -106,6 +115,10 @@ Le navigateur ne connaît donc **qu'une seule adresse** (celle du site qu'il vis
 | **Nominatim** | `Application/src/lib/places.ts` | Recherche d'adresse et nom d'un point touché sur la carte |
 | **Google Fonts** (Plus Jakarta Sans) | `app/layout.tsx` (deux sites) | Police, téléchargée à la compilation |
 | **Gmail SMTP** (facultatif) | `Backend/src/mailer.ts` | Envoi réel des e-mails |
+| **API SMS d'Orange** (facultatif, payant au SMS) | `Backend/src/sms.ts` | Codes de vérification, rappels, alertes |
+| **Services push des navigateurs** (Google, Apple, Mozilla) | `Backend/src/push.ts` via `web-push` | Notifications sur les téléphones (gratuit) |
+| **OSRM** (facultatif, à installer soi-même) | `Backend/src/routing.ts` | Distances et tracés par la route |
+| **Synthèse vocale du téléphone** | `Commun/lib/preferences.ts` | Annonces vocales en français |
 
 ## Démarrer le projet
 
@@ -122,8 +135,12 @@ npm run dev            # API (4000) + Application (3000) + Administration (3001)
 | `dev:https` | Pareil, mais l'Application en **https** (certificat auto-signé dans `Application/certificates/`). Utile pour tester le **GPS depuis un téléphone** sur le réseau local : les navigateurs refusent la géolocalisation en http (sauf sur `localhost`). |
 | `build` | Compile les deux sites pour la production |
 | `start` | Lance la version de production des trois programmes |
+| `test` | Tests automatiques du Backend (17 parcours, base temporaire) |
+| `sync` | Recopie les fichiers de `Commun/` (fait aussi automatiquement avant `dev`, `build`, `start`) |
 
-Script du Backend : `npm run reset-admin-pin -- 4821` (dans `Backend/`) donne un nouveau code PIN à l'administrateur principal (PIN oublié).
+Scripts du Backend (dans `Backend/`) : `npm run reset-admin-pin -- 4821` (nouveau PIN pour l'administrateur principal, sans SMS) et `npm run backup` (sauvegarde immédiate).
+
+**En développement**, sans fournisseur SMS, les codes de vérification s'affichent à l'écran (« Mode test ») : vous pouvez tout tester sans téléphone.
 
 ## Variables d'environnement
 
@@ -134,7 +151,12 @@ Script du Backend : `npm run reset-admin-pin -- 4821` (dans `Backend/`) donne un
 | `SMTP_USER`, `SMTP_PASS` | `Backend/src/mailer.ts` | vide | Identifiants Gmail. Vides = e-mails enregistrés en fichiers |
 | `SMTP_HOST`, `SMTP_PORT` | `Backend/src/mailer.ts` | `smtp.gmail.com`, `465` | Serveur d'envoi |
 | `MAIL_FROM_NAME` | `Backend/src/mailer.ts` | `SURPLACE` | Nom de l'expéditeur |
-| `SITE_URL` | `Backend/src/site.ts` | `http://localhost:3000` | Adresse publique, pour les liens dans les e-mails |
+| `SITE_URL` | `Backend/src/config.ts` | `http://localhost:3000` | Adresse publique de l'Application (liens dans les e-mails, SMS, suivi partagé) |
+| `ADMIN_URL` (Backend) | `Backend/src/config.ts` | `http://localhost:3001` | Adresse de l'Administration |
+| `SMS_PROVIDER`, `ORANGE_CLIENT_ID`, `ORANGE_CLIENT_SECRET`, `ORANGE_SENDER`, `ORANGE_SENDER_NAME` | `Backend/src/sms.ts` | `console` | Envoi des SMS par Orange ; sinon aucun envoi réel |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `Backend/src/push.ts` | créées dans `data/vapid.json` | Clés des notifications push |
+| `OSRM_URL` | `Backend/src/routing.ts` | vide | Serveur d'itinéraires (distance par la route) |
+| `SURPLACE_BACKUP_DIR` | `Backend/src/backup.ts` | `data/backups` | Dossier des sauvegardes |
 | `BACKEND_URL` | `next.config.ts` et `lib/server.ts` des **deux sites** | `http://localhost:4000` | Où trouver l'API |
 | `ADMIN_URL` | `Application/src/lib/server.ts` | `http://localhost:3001` | Où renvoyer un administrateur qui arrive sur l'Application |
 | `NODE_ENV` | partout | `development` en dev, `production` après build | Cookie `secure`, comptes de démo cachés, mode démo chauffeur désactivé |
