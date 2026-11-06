@@ -10,7 +10,6 @@ type Purpose = "register" | "guest" | "reset" | "phone";
 
 /**
  * Code de vérification reçu par SMS : bouton « Recevoir le code », puis champ à 6 chiffres.
- * En développement, aucun SMS ne part : le code est affiché ici pour pouvoir tester.
  */
 export function OtpField({
   phone,
@@ -26,7 +25,6 @@ export function OtpField({
   label?: string;
 }) {
   const [sentTo, setSentTo] = useState("");
-  const [devCode, setDevCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [wait, setWait] = useState(0);
@@ -44,9 +42,8 @@ export function OtpField({
     setError("");
     setLoading(true);
     try {
-      const res = await api<{ sent: boolean; devCode?: string }>("/api/otp", { phone, purpose });
+      await api<{ sent: boolean }>("/api/otp", { phone, purpose });
       setSentTo(digits);
-      setDevCode(res.devCode ?? "");
       setWait(60);
       onChange("");
     } catch (err) {
@@ -82,11 +79,6 @@ export function OtpField({
             className={`${inputClass} text-center tracking-[0.4em]`}
           />
           <p className="text-xs text-muted">Code envoyé au {sentTo.replace(/(\d{2})(?=\d)/g, "$1 ")}, valable 10 minutes.</p>
-          {devCode && (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Mode test (aucun SMS n&apos;est envoyé) : le code est <strong>{devCode}</strong>.
-            </p>
-          )}
         </>
       )}
       {changedNumber && <p className="text-xs text-amber-800">Numéro modifié : demandez un nouveau code.</p>}

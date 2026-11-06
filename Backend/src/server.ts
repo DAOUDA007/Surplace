@@ -1,11 +1,14 @@
+import { removeDemoAccounts } from "./accounts";
 import { app } from "./app";
 import { startJobs } from "./jobs";
 import { mailEnabled } from "./mailer";
 import { otpRequired } from "./otp";
-import { osrmEnabled } from "./routing";
+import { osrmEnabled, osrmHost } from "./routing";
 import { smsProviderName } from "./sms";
 
 const PORT = Number(process.env.PORT ?? 4000);
+
+removeDemoAccounts();
 
 app.listen(PORT, () => {
   console.log(`SURPLACE API prête sur http://localhost:${PORT}`);
@@ -15,7 +18,7 @@ app.listen(PORT, () => {
       : "[e-mail] SMTP non configuré : les e-mails seront enregistrés dans data/emails/ (voir Backend/.env.example).",
   );
   console.log(`[sms] Fournisseur : ${smsProviderName}. Codes de vérification ${otpRequired ? "activés" : "désactivés"}.`);
-  console.log(`[itinéraires] ${osrmEnabled ? "OSRM activé" : "estimation à vol d'oiseau (OSRM_URL non défini)"}.`);
+  console.log(`[itinéraires] ${osrmEnabled ? `OSRM activé (${osrmHost})` : "estimation à vol d'oiseau (OSRM_URL=off)"}.`);
   // Attribution des courses, rappels, sauvegardes, ménage.
   startJobs();
 });

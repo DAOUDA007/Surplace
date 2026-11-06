@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { IS_PRODUCTION } from "./config";
+import { IS_PRODUCTION, IS_TEST } from "./config";
 import { db } from "./db";
 import { HttpError } from "./http";
 import { RateLimiter } from "./limits";
@@ -9,9 +9,10 @@ import { sendSms, smsConfigured } from "./sms";
 /**
  * Codes de vérification à 6 chiffres envoyés par SMS.
  *
- * Obligatoires quand un fournisseur SMS est configuré, et toujours en développement (le code est alors
- * renvoyé à l'écran sous le nom devCode, puisqu'aucun SMS ne part). En production SANS fournisseur SMS,
+ * Obligatoires quand un fournisseur SMS est configuré, et toujours en développement (sans fournisseur, le SMS
+ * est seulement écrit dans le terminal du serveur et dans data/sms/). En production SANS fournisseur SMS,
  * la vérification est désactivée : sinon personne ne pourrait s'inscrire.
+ * Le code n'est jamais renvoyé à l'écran, sauf aux tests automatiques (devCode).
  */
 export const otpRequired = smsConfigured || !IS_PRODUCTION;
 
@@ -30,7 +31,7 @@ const MESSAGES: Record<OtpPurpose, string> = {
   phone: "votre code pour confirmer votre nouveau numéro",
 };
 
-/** Envoie un code. Renvoie devCode en développement (aucun SMS réel). */
+/** Envoie un code par SMS. */
 export async function requestOtp(phone: string, purpose: OtpPurpose, ip: string) {
   if (!otpRequired) return { sent: false, required: false };
   byPhone.check(phone, "Trop de codes demandés pour ce numéro. Réessayez dans {minutes} min.");
@@ -67,7 +68,7 @@ export async function requestOtp(phone: string, purpose: OtpPurpose, ip: string)
     phone,
     `SURPLACE : ${code} est ${MESSAGES[purpose]}. Valable ${CODE_MINUTES} minutes. Ne le communiquez à personne.`,
   );
-  return { sent: true, required: true, ...(smsConfigured ? {} : { devCode: code }) };
+  return { sent: true, required: true, ...(IS_TEST ? { devCode: code } : {}) };
 }
 
 /** Vérifie et consomme un code. Ne fait rien si la vérification par SMS est désactivée. */

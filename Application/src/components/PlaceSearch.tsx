@@ -46,7 +46,7 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
       } finally {
         setSearching(false);
       }
-    }, 500);
+    }, 300);
     return () => {
       clearTimeout(timer);
       controller.abort();

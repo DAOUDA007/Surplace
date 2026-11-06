@@ -24,16 +24,6 @@ const LINKS = [
   { href: "/notifications", label: "🔔 Notifications" },
 ];
 
-/** Déplacement simulé en mode démo (mètres par pas de 2 s). */
-const DEMO_STEP_M = 90;
-
-function moveToward(from: LatLng, to: LatLng, meters: number): LatLng {
-  const dist = haversineKm(from, to) * 1000;
-  if (dist <= meters) return to;
-  const f = meters / dist;
-  return { lat: from.lat + (to.lat - from.lat) * f, lng: from.lng + (to.lng - from.lng) * f };
-}
-
 /** Garde l'écran allumé tant que le chauffeur est en ligne (API Wake Lock, si le téléphone la propose). */
 function useWakeLock(active: boolean) {
   useEffect(() => {
@@ -65,8 +55,6 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
       ? { lat: initialProfile.lat, lng: initialProfile.lng }
       : null,
   );
-  // En développement, le mode démo est actif par défaut (pas de GPS sur ordinateur).
-  const [demo, setDemo] = useState(process.env.NODE_ENV !== "production");
   const [finished, setFinished] = useState<Ride | null>(null);
   const [today, setToday] = useState({ count: 0, total: 0 });
   const [subscription, setSubscription] = useState<DriverSubscription | null>(null);
@@ -175,21 +163,27 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
 
   // --- Position GPS réelle ---
   useEffect(() => {
-    if (!profile.isOnline || demo) return;
+    if (!profile.isOnline) return;
     if (!window.isSecureContext || !("geolocation" in navigator)) {
-      setDemo(true);
       setNotice(
         window.isSecureContext
-          ? "Votre navigateur ne permet pas la localisation : mode démo activé."
-          : "GPS bloqué : le site doit être ouvert en https. Mode démo activé (touchez la carte pour placer votre moto).",
+          ? "Votre navigateur ne permet pas la localisation : utilisez Chrome ou Safari à jour pour recevoir des courses."
+          : "GPS bloqué : le site doit être ouvert en https pour que les passagers vous voient.",
       );
       return;
     }
     const id = navigator.geolocation.watchPosition(
-      (pos) => setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {
-        setDemo(true);
-        setNotice("GPS indisponible : mode démo activé. Touchez la carte pour placer votre moto.");
+      (pos) => {
+        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNotice((n) => (n.startsWith("GPS") ? "" : n));
+      },
+      (err) => {
+        // Le suivi continue après un simple délai dépassé : on prévient sans arrêter.
+        setNotice(
+          err.code === err.PERMISSION_DENIED
+            ? "GPS refusé : autorisez la localisation pour ce site (icône 🔒 à gauche de l'adresse), sinon aucun passager ne vous verra."
+            : "GPS : position introuvable pour l'instant. Activez la localisation du téléphone et placez-vous à découvert.",
+        );
       },
       // Économie de batterie : GPS moins précis, lectures moins fréquentes.
       saver
@@ -197,18 +191,7 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
         : { enableHighAccuracy: true, maximumAge: 5000, timeout: 15_000 },
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [profile.isOnline, demo, saver]);
-
-  // --- Mode démo : la moto avance seule vers le point de départ puis la destination ---
-  const demoTarget =
-    ride?.status === "accepted" ? ride.pickup : ride?.status === "in_progress" ? ride.dropoff : null;
-  useEffect(() => {
-    if (!demo || !demoTarget) return;
-    const t = setInterval(() => {
-      setPosition((p) => (p ? moveToward(p, demoTarget, DEMO_STEP_M) : p));
-    }, 2000);
-    return () => clearInterval(t);
-  }, [demo, demoTarget?.lat, demoTarget?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile.isOnline, saver]);
 
   // --- Envoi de la position au serveur ---
   // Normal : toutes les 1,5 s au plus pendant une course. Économie : dès 50 m parcourus ou toutes les 20 s.
@@ -311,7 +294,6 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
       markers={markers}
       route={ride && position && navTarget ? [position, navTarget] : null}
       fitTo={fitTo}
-      onMapClick={demo ? setPosition : undefined}
       bottomPadding={sheet.height}
       heat={heat ?? undefined}
     />
@@ -398,7 +380,7 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
               <span className="font-semibold text-brand">{subscriptionEndingSoon ? "Renouveler" : "Gérer"}</span>
             </button>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-2">
               <button
                 type="button"
                 onClick={() => toggleHeat().catch((err) => setError((err as Error).message))}
@@ -407,18 +389,6 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
                 <span className="font-semibold">🔥 Zones demandées</span>
                 <span className="block text-xs opacity-80">{heat ? "Affichées sur la carte" : "Où sont les clients ?"}</span>
               </button>
-              <label className="flex items-center justify-between gap-2 rounded-2xl bg-subtle px-3 py-3 text-sm">
-                <span>
-                  <span className="font-semibold">Mode démo</span>
-                  <span className="block text-xs text-muted">Position simulée</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={demo}
-                  onChange={(e) => setDemo(e.target.checked)}
-                  className="h-5 w-5 accent-[var(--color-brand)]"
-                />
-              </label>
             </div>
 
             {!profile.isOnline ? (

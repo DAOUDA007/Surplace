@@ -7,3 +7,6 @@ export const SITE_URL = (process.env.SITE_URL ?? "http://localhost:3000").replac
 export const ADMIN_URL = (process.env.ADMIN_URL ?? "http://localhost:3001").replace(/\/$/, "");
 
 export const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+/** Tests automatiques (`npm test`) : seuls à disposer de comptes de démonstration et du code SMS en retour. */
+export const IS_TEST = process.env.NODE_ENV === "test";

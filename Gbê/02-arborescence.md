@@ -87,7 +87,7 @@ Surplace/
 │       │   ├── PassengerApp.tsx    ★ Écran passager : prix serveur, favoris, réservation, pour un proche, invité + SMS, partage, urgence
 │       │   ├── DriverApp.tsx       ★ Écran chauffeur : propositions avec compte à rebours, son, écran allumé, batterie, zones, note du passager
 │       │   ├── AppShell.tsx, AppMenu.tsx   Carte plein écran ; menu ☰ (cloche, réglages, installation)
-│       │   ├── PlaceSearch.tsx     Recherche de lieu (favoris, lieux fréquents, Nominatim)
+│       │   ├── PlaceSearch.tsx     Recherche de lieu (favoris, lieux fréquents, Photon)
 │       │   ├── AuthForms.tsx       Connexion, inscription
 │       │   ├── ProfilePage.tsx, DocumentsPanel.tsx, ReferralCard.tsx   Profil, documents, parrainage
 │       │   ├── RideHistory.tsx, ComplaintButton.tsx   Historique, « Signaler un problème »

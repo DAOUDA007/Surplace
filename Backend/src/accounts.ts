@@ -186,6 +186,30 @@ export function deleteMemberAccount(userId: number, role: "passenger" | "driver"
   return { anonymized: !!hasRides };
 }
 
+/**
+ * Supprime les comptes de démonstration créés par les anciennes versions (passager 07 00 00 00 01 et
+ * chauffeur 07 00 00 00 02), seulement s'ils ont encore leur nom et leur PIN 1234 d'origine.
+ * L'administrateur n'est jamais touché.
+ */
+export function removeDemoAccounts() {
+  const demo = [
+    { phone: "0700000001", name: "Awa Koné", role: "passenger" as const },
+    { phone: "0700000002", name: "Moussa Traoré", role: "driver" as const },
+  ];
+  for (const d of demo) {
+    const user = db
+      .prepare("SELECT id, pin_hash FROM users WHERE phone = ? AND name = ? AND role = ? AND deleted_at IS NULL")
+      .get(d.phone, d.name, d.role) as { id: number; pin_hash: string } | undefined;
+    if (!user || !verifyPin("1234", user.pin_hash)) continue;
+    try {
+      deleteMemberAccount(user.id, d.role);
+      console.log(`[base] Compte de démonstration supprimé : ${d.name} (${d.phone}).`);
+    } catch (err) {
+      console.error(`[base] Compte de démonstration ${d.phone} non supprimé :`, (err as Error).message);
+    }
+  }
+}
+
 // --- Administrateurs ---
 
 export function requirePrincipal(user: User) {

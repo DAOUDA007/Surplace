@@ -17,7 +17,7 @@ Toutes les propositions ci-dessous ont été intégrées, **sauf les paiements**
 | Commander pour quelqu'un d'autre | ✅ | « 👤 Un proche » |
 | Réservation à l'avance | ✅ | « 🕒 Plus tard » |
 | Réclamation sur une course | ✅ | Historique › Signaler un problème ; Administration › Réclamations |
-| Prix et trajet par la route (OSRM) | ✅ (serveur OSRM à installer) | `routing.ts`, `deploy/DEPLOIEMENT.md` |
+| Prix et trajet par la route (OSRM) | ✅ (serveur OSRM public gratuit par défaut) | `routing.ts`, `deploy/DEPLOIEMENT.md` |
 | Mode simple et annonces vocales | ✅ français ; dioula / sénoufo : **fichiers audio à enregistrer** | Menu ☰ |
 | Alerte sonore, vibration, écran allumé | ✅ | Écran chauffeur |
 | Attribution automatique au plus proche | ✅ | Administration › Tarifs et réglages |

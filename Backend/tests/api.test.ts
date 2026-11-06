@@ -10,6 +10,8 @@ import path from "node:path";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 
+// Mode test : comptes de démonstration créés et code SMS renvoyé dans la réponse.
+process.env.NODE_ENV = "test";
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "surplace-test-"));
 process.env.SURPLACE_DB = path.join(TMP, "test.db");
 process.env.SURPLACE_BACKUP_DIR = path.join(TMP, "backups");
@@ -58,7 +60,7 @@ async function loginAs(phone: string, pin = "1234", space?: string) {
 async function otp(c: Client, phone: string, purpose: string) {
   const res = await c.post("/api/otp", { phone, purpose });
   assert.equal(res.status, 200, JSON.stringify(res.data));
-  assert.ok(res.data.devCode, "le code de test est renvoyé en développement");
+  assert.ok(res.data.devCode, "le code est renvoyé aux tests automatiques");
   return res.data.devCode as string;
 }
 

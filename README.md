@@ -11,7 +11,7 @@ Surplace/
 │   ├── src/rides.ts       cycle de vie des courses
 │   ├── src/drivers.ts     chauffeurs : en ligne, position, validation
 │   ├── src/auth.ts        sessions par cookie
-│   ├── src/db.ts          schéma SQLite et comptes de démonstration
+│   ├── src/db.ts          schéma SQLite et premier administrateur
 │   └── data/              base de données (créée au premier lancement)
 ├── Application/      Site public, passagers et chauffeurs (Next.js) — port 3000
 │   ├── src/app/           pages (accueil, connexion, inscription, passager, chauffeur)
@@ -52,21 +52,17 @@ En production (rapide dès la première visite) : `npm run build` puis `npm star
 | `BACKEND_URL` | Application, Administration | `http://localhost:4000`  | Adresse de l'API        |
 | `ADMIN_URL`   | Application | `http://localhost:3001`  | Adresse du site d'administration |
 
-## Comptes de démonstration (PIN `1234`)
+## Premier administrateur
 
-| Rôle      | Téléphone      | Mode de passe |
-|-----------|----------------|---------------|
-| Passager  | 07 00 00 00 01 | 1 2 3 4       |
-| Chauffeur | 07 00 00 00 02 | 1 2 3 4       |
-| Admin     | 05 74 32 88 18 | 2 0 0 2       |
+Il n'y a pas de compte de démonstration. Sur une base neuve, définissez `ADMIN_PHONE` et `ADMIN_PIN` dans `Backend/.env` (ou dans les variables d'environnement de Render) : l'administrateur principal est créé au démarrage. Les passagers et chauffeurs s'inscrivent eux-mêmes depuis l'Application.
 
 Les administrateurs se connectent uniquement sur http://localhost:3001 ; passagers et chauffeurs uniquement sur http://localhost:3000. PIN admin oublié : `npm run reset-admin-pin -- 4821` dans `Backend/`.
 
-Pour tester une course complète, ouvrez le passager et le chauffeur dans deux navigateurs différents (ou une fenêtre privée). Le chauffeur passe en ligne, le passager commande, puis le chauffeur accepte. En mode démo, la moto se déplace toute seule sur la carte.
+Pour tester une course complète, ouvrez le passager et le chauffeur dans deux navigateurs différents (ou une fenêtre privée). Le chauffeur passe en ligne (le GPS du téléphone est nécessaire), le passager commande, puis le chauffeur accepte. Sans fournisseur SMS, les codes de vérification sont écrits dans le terminal du Backend.
 
 ## Fonctionnement
 
-- **Tarif** : 50 FCFA/km, minimum 200 FCFA par course, arrondi aux 25 FCFA supérieurs. La distance est estimée à vol d'oiseau × 1,3. Ces valeurs se règlent dans `pricing.ts`.
+- **Tarif** : 50 FCFA/km, minimum 200 FCFA par course, arrondi aux 25 FCFA supérieurs. La distance est mesurée par la route (serveur OSRM public d'OpenStreetMap), ou à vol d'oiseau × 1,3 s'il ne répond pas. Ces valeurs se règlent dans l'administration.
 - **Abonnement des chauffeurs** (aucune commission sur les courses) : Mensuel 1 000 FCFA, Annuel 10 000 FCFA (`SUBSCRIPTION_PLANS` dans `pricing.ts`). Sans abonnement actif, un chauffeur ne peut ni passer en ligne ni accepter de course ; à l'expiration, il est mis hors ligne (sauf s'il termine une course).
   1. Le chauffeur choisit sa formule dans l'application : une demande est créée.
   2. Il paie SURPLACE (espèces ou Mobile Money).
@@ -78,7 +74,7 @@ Pour tester une course complète, ouvrez le passager et le chauffeur dans deux n
 - Les chauffeurs voient les demandes dans un rayon de 10 km.
 - Un nouveau chauffeur doit être validé par l'administrateur avant de pouvoir passer en ligne.
 - **Temps réel** : Server-Sent Events (`/api/events`), avec une actualisation toutes les 15 s en secours.
-- **Cartes et adresses** : OpenStreetMap (tuiles et recherche Nominatim limitée à Korhogo). Les lieux fréquents sont dans `Application/src/lib/places.ts` : leurs coordonnées sont approximatives, à vérifier sur le terrain.
+- **Cartes et adresses** : OpenStreetMap : tuiles, recherche d'adresses Photon (Nominatim en secours) limitée à Korhogo, itinéraires OSRM. Tout est gratuit et sans clé. Les lieux fréquents sont dans `Application/src/lib/places.ts` : leurs coordonnées sont approximatives, à vérifier sur le terrain.
 - **Thème** : clair, sombre ou automatique (selon l'appareil). Le bouton est sur la page d'accueil, les pages de connexion et dans le menu utilisateur. La carte s'assombrit aussi.
 - **Avis** : la page d'accueil affiche la note moyenne, la répartition des notes et les derniers commentaires (prénom + initiale du nom). L'admin peut masquer un avis.
 - **Contact** : coordonnées dans `Application/src/lib/site.ts` (**valeurs provisoires à remplacer**). Les messages du formulaire arrivent dans le tableau de bord admin (limite de 3 messages par 10 minutes et par adresse IP).

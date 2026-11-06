@@ -11,7 +11,7 @@ Il ne contient aucun code exécuté : vous pouvez le lire, le modifier ou le sup
 | 1 | [01-vue-d-ensemble.md](01-vue-d-ensemble.md) | Ce que fait l'application, ses trois programmes (Backend, Application, Administration), les technologies et pourquoi elles ont été choisies |
 | 2 | [02-arborescence.md](02-arborescence.md) | L'arbre complet, pourquoi deux sites, le dossier Commun (fichiers partagés), les conventions |
 | 3 | [03-backend.md](03-backend.md) | Le serveur API fichier par fichier : sessions, courses, attribution automatique, SMS, documents, urgences, notifications, réglages, rapports, tests |
-| 4 | [04-base-de-donnees.md](04-base-de-donnees.md) | Les tables SQLite, leurs colonnes, les relations, les migrations et les comptes de démonstration |
+| 4 | [04-base-de-donnees.md](04-base-de-donnees.md) | Les tables SQLite, leurs colonnes, les relations, les migrations et le premier administrateur |
 | 5 | [05-routes-api.md](05-routes-api.md) | Toutes les adresses `/api/...` : qui peut les appeler et ce qu'elles font |
 | 6 | [06-frontend-pages.md](06-frontend-pages.md) | Le fonctionnement de Next.js et chaque page de l'Application et de l'Administration |
 | 7 | [07-frontend-composants.md](07-frontend-composants.md) | Les composants React, les hooks et les utilitaires des deux sites |
@@ -20,6 +20,8 @@ Il ne contient aucun code exécuté : vous pouvez le lire, le modifier ou le sup
 | 10 | [10-propositions.md](10-propositions.md) | Les propositions d'évolution et le **bilan** de ce qui est réalisé |
 
 Pour la **mise en ligne** sur un serveur : [deploy/DEPLOIEMENT.md](../deploy/DEPLOIEMENT.md).
+
+**Rapport de stage** (thème : SURPLACE, avec l'étude MERISE complète) : [Rapport-de-stage/](Rapport-de-stage/00-LISEZMOI.md).
 
 ## En une phrase
 

@@ -62,9 +62,9 @@ Le **HTTPS est indispensable** : sans lui, les téléphones refusent le GPS et l
 
 ## 6. Première connexion
 
-1. Ouvrez `https://admin.surplace.ci` et connectez-vous avec le compte admin de démonstration (`07 00 00 00 00`, PIN `1234`).
-2. **Changez tout de suite** le numéro et le code PIN dans « Mon compte ».
-3. Supprimez les comptes de démonstration passager et chauffeur (`07 00 00 00 01` et `07 00 00 00 02`).
+1. Avant le premier démarrage, ajoutez dans `Backend/.env` : `ADMIN_PHONE=07xxxxxxxx` et `ADMIN_PIN=xxxx` (4 chiffres). L'administrateur principal est créé si la base n'en contient aucun.
+2. Ouvrez `https://admin.surplace.ci` et connectez-vous avec ce numéro et ce code PIN, puis retirez `ADMIN_PIN` du fichier.
+3. Il n'existe aucun compte de démonstration : passagers et chauffeurs s'inscrivent eux-mêmes. Les anciens comptes de démonstration (`07 00 00 00 01` et `07 00 00 00 02`, PIN `1234`) sont supprimés automatiquement au démarrage.
 4. Réglez les tarifs dans « Tarifs et réglages ».
 
 ## 7. Mettre à jour
@@ -94,9 +94,11 @@ La base de données est migrée automatiquement au démarrage (nouvelles colonne
 - `https://surplace.ci/api/health` répond `{"ok":true}` quand tout va bien (code 503 sinon). Un service gratuit comme UptimeRobot peut l'interroger toutes les 5 minutes et vous prévenir par SMS ou e-mail.
 - Journaux : `pm2 logs` (ou `pm2 logs surplace-api`).
 
-## 10. Itinéraires routiers (facultatif)
+## 10. Itinéraires routiers
 
-Pour mesurer les distances par la route (prix plus justes, tracé sur la carte), installez un serveur **OSRM** avec la carte de Côte d'Ivoire :
+Par défaut, les distances sont mesurées par la route grâce au serveur **OSRM public et gratuit** d'OpenStreetMap (`routing.openstreetmap.de`) : rien à installer. `OSRM_URL=off` revient à l'estimation à vol d'oiseau.
+
+Si l'application devient très utilisée, le serveur public peut limiter les demandes. Installez alors votre propre serveur **OSRM** avec la carte de Côte d'Ivoire :
 
 ```bash
 sudo apt install -y docker.io

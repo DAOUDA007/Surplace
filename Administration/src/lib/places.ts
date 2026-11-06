@@ -38,19 +38,59 @@ export function searchPopularPlaces(query: string, places: Place[] = POPULAR_PLA
   return places.filter((p) => normalize(p.label).includes(q)).slice(0, 6);
 }
 
+/**
+ * Recherche d'adresses gratuite, basée sur OpenStreetMap :
+ * - Photon (komoot) en premier : rapide et conçu pour proposer des résultats pendant la frappe ;
+ * - Nominatim en secours si Photon ne répond pas.
+ */
+const PHOTON = "https://photon.komoot.io";
 const NOMINATIM = "https://nominatim.openstreetmap.org";
+/** Korhogo et ses environs : ouest, sud, est, nord. */
+const BBOX = { west: -5.8, south: 9.3, east: -5.45, north: 9.6 };
+
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] };
+  properties: { name?: string; street?: string; housenumber?: string; district?: string; locality?: string; city?: string };
+}
+
+/** « Nom, rue, quartier » sans répétitions, ex. « Gare Routière Danaya, Korhogo - Niellé, Dyègbè ». */
+function photonLabel(p: PhotonFeature["properties"]) {
+  const street = p.street ? [p.housenumber, p.street].filter(Boolean).join(" ") : undefined;
+  const parts = [p.name, street, p.district ?? p.locality, p.city].filter((x): x is string => !!x);
+  return [...new Set(parts)].slice(0, 3).join(", ");
+}
+
+function photonPlaces(features: PhotonFeature[]): Place[] {
+  return features
+    .map((f) => ({ label: photonLabel(f.properties), lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }))
+    .filter((p) => p.label);
+}
 
 function shortLabel(displayName: string) {
   return displayName.split(",").slice(0, 3).map((s) => s.trim()).join(", ");
 }
 
-/** Recherche d'adresse via OpenStreetMap (Nominatim), limitée à Korhogo et ses environs. */
-export async function searchAddress(query: string, signal?: AbortSignal): Promise<Place[]> {
+async function photonSearch(query: string, signal?: AbortSignal): Promise<Place[]> {
+  const params = new URLSearchParams({
+    q: query,
+    lat: String(CITY_CENTER.lat),
+    lon: String(CITY_CENTER.lng),
+    bbox: [BBOX.west, BBOX.south, BBOX.east, BBOX.north].join(","),
+    limit: "6",
+    lang: "fr",
+  });
+  const res = await fetch(`${PHOTON}/api/?${params}`, { signal });
+  if (!res.ok) throw new Error(`Photon ${res.status}`);
+  const data = (await res.json()) as { features: PhotonFeature[] };
+  return photonPlaces(data.features);
+}
+
+async function nominatimSearch(query: string, signal?: AbortSignal): Promise<Place[]> {
   const params = new URLSearchParams({
     format: "jsonv2",
     q: query,
     countrycodes: "ci",
-    viewbox: "-5.8,9.6,-5.45,9.3",
+    viewbox: [BBOX.west, BBOX.north, BBOX.east, BBOX.south].join(","),
     bounded: "1",
     limit: "5",
     "accept-language": "fr",
@@ -61,9 +101,29 @@ export async function searchAddress(query: string, signal?: AbortSignal): Promis
   return rows.map((r) => ({ label: shortLabel(r.display_name), lat: Number(r.lat), lng: Number(r.lon) }));
 }
 
-/** Nom lisible d'un point choisi sur la carte. */
+/** Recherche d'adresse limitée à Korhogo et ses environs. */
+export async function searchAddress(query: string, signal?: AbortSignal): Promise<Place[]> {
+  try {
+    return await photonSearch(query, signal);
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    return nominatimSearch(query, signal);
+  }
+}
+
+/** Nom lisible d'un point choisi sur la carte ou donné par le GPS. */
 export async function reverseGeocode(point: LatLng): Promise<string> {
   const fallback = `Point sur la carte (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`;
+  try {
+    const params = new URLSearchParams({ lat: String(point.lat), lon: String(point.lng), lang: "fr", limit: "1" });
+    const res = await fetch(`${PHOTON}/reverse?${params}`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const [place] = photonPlaces(((await res.json()) as { features: PhotonFeature[] }).features);
+      if (place) return place.label;
+    }
+  } catch {
+    // Photon indisponible : on essaie Nominatim.
+  }
   try {
     const params = new URLSearchParams({
       format: "jsonv2",
@@ -72,7 +132,7 @@ export async function reverseGeocode(point: LatLng): Promise<string> {
       zoom: "17",
       "accept-language": "fr",
     });
-    const res = await fetch(`${NOMINATIM}/reverse?${params}`);
+    const res = await fetch(`${NOMINATIM}/reverse?${params}`, { signal: AbortSignal.timeout(5000) });
     if (!res.ok) return fallback;
     const data = (await res.json()) as { display_name?: string };
     return data.display_name ? shortLabel(data.display_name) : fallback;

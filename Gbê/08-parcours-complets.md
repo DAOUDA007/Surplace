@@ -85,8 +85,8 @@ Prérequis : le chauffeur est sur `/chauffeur`, validé, abonné, **en ligne**. 
 
 ### 1. Le passager choisit son trajet
 
-- Départ : position GPS (`locateUser` dans `lib/geolocation.ts`), nom par `reverseGeocode` (Nominatim).
-- Destination : recherche dans `PlaceSearch` (lieux fréquents + Nominatim) ou clic sur la carte.
+- Départ : position GPS (`locateUser` dans `lib/geolocation.ts`), nom par `reverseGeocode` (Photon).
+- Destination : recherche dans `PlaceSearch` (lieux fréquents + Photon) ou clic sur la carte.
 - Prix affiché : `estimateTrip(pickup, dropoff)` de `lib/pricing.ts`, **calculé dans le navigateur**, sans appel serveur.
 
 ### 2. Le passager commande
@@ -133,7 +133,7 @@ PASSAGER : événement "ride" → refresh() → panneau « Votre chauffeur arriv
 ### 5. Le chauffeur se déplace (suivi en direct)
 
 ```
-DriverApp : position change (GPS réel ou mode démo toutes les 2 s)
+DriverApp : position change (GPS réel)
          → POST /api/driver/location { lat, lng }   (au plus toutes les 1,5 s)
 BACKEND updateDriverLocation()                                      drivers.ts
          UPDATE drivers SET lat, lng …
@@ -302,7 +302,7 @@ Un admin qui essaie de se connecter sur l'**Application** reçoit « Les adminis
 OtpField « Recevoir le code » → POST /api/otp { phone, purpose }                     otp.ts › requestOtp
    limites : 3 codes / 15 min par numéro, 10 / h par IP
    code à 6 chiffres, haché dans otp_codes, valable 10 min
-   sms.ts › sendSms : Orange (si configuré) ou console + data/sms/ (développement : devCode affiché à l'écran)
+   sms.ts › sendSms : Orange (si configuré) ou console + data/sms/ (développement : code lu dans le terminal)
 L'utilisateur tape le code → il part avec le formulaire (code: "123456")
 BACKEND verifyOtp(phone, purpose, code) : code juste et non expiré ? (5 essais max) → consommé
 ```

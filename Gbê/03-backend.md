@@ -428,7 +428,7 @@ Un PIN de 4 chiffres a 10 000 possibilités : avec 5 essais par quart d'heure, i
 - **`otp.ts`** : codes à 6 chiffres, valables 10 minutes, 5 essais au plus, stockés **hachés** (comme les PIN) dans `otp_codes`.
   - `requestOtp(numéro, but, ip)` : `register` (refusé si le numéro a déjà un compte), `guest`, `reset` (ne révèle jamais si le numéro existe : aucun SMS ne part, mais la réponse est la même), `phone` (changement de numéro).
   - `verifyOtp(numéro, but, code)` : vérifie et **consomme** le code.
-  - **`otpRequired`** = fournisseur SMS configuré **ou** développement. En développement, la réponse contient `devCode` (affiché à l'écran « Mode test »). En production sans fournisseur, la vérification est désactivée (sinon personne ne pourrait s'inscrire).
+  - **`otpRequired`** = fournisseur SMS configuré **ou** développement. Le code n'est jamais renvoyé à l'écran : sans fournisseur, il est écrit dans le terminal du serveur et dans `data/sms/` (seuls les tests automatiques reçoivent `devCode`). En production sans fournisseur, la vérification est désactivée (sinon personne ne pourrait s'inscrire).
 
 ## `settings.ts` — tarifs et réglages modifiables
 
@@ -437,7 +437,7 @@ Un PIN de 4 chiffres a 10 000 possibilités : avec 5 essais par quart d'heure, i
 ## `routing.ts` — distance et prix d'un trajet
 
 `estimateRoute(départ, arrivée, heure)` :
-1. Si `OSRM_URL` est défini : demande l'itinéraire au serveur OSRM (4 s maximum, résultat gardé en cache) → distance **par la route**, durée, tracé simplifié (150 points).
+1. Par défaut, demande l'itinéraire au serveur OSRM public d'OpenStreetMap (`routing.openstreetmap.de`), ou à celui de `OSRM_URL` (`off` le désactive) (4 s maximum, résultat gardé en cache) → distance **par la route**, durée, tracé simplifié (150 points).
 2. Sinon (ou si OSRM ne répond pas) : ligne droite × facteur route.
 3. Applique le tarif en vigueur et les majorations à l'**heure de prise en charge** (une réservation de nuit est majorée).
 

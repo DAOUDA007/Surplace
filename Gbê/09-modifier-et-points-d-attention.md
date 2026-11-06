@@ -67,7 +67,7 @@ Beaucoup de réglages se font maintenant **sans toucher au code**, dans l'Admini
 | **Groupe de routes** | Dossier entre parenthèses (Next.js), absent de l'adresse. |
 | **Composant serveur / client** | Code React exécuté sur le serveur Next.js / dans le navigateur. |
 | **Hook** | Fonction React `useXxx` qui ajoute un comportement à un composant. |
-| **Géocodage** | Adresse ↔ coordonnées (Nominatim). |
+| **Géocodage** | Adresse ↔ coordonnées (Photon, Nominatim en secours). |
 | **Haversine** | Formule de distance entre deux points GPS. |
 
 ## Points d'attention
@@ -82,7 +82,7 @@ Beaucoup de réglages se font maintenant **sans toucher au code**, dans l'Admini
 
 ### Reste à faire / à vérifier
 
-1. **Compte admin de démonstration** (`07 00 00 00 00` / `1234` sur une base neuve) : à changer avant la mise en service ; supprimer aussi les comptes de démo passager et chauffeur.
+1. **Premier administrateur** : défini par `ADMIN_PHONE` / `ADMIN_PIN` sur une base neuve ; retirez `ADMIN_PIN` après la première connexion. Il n'y a plus de comptes de démonstration.
 2. **Fournisseur SMS** : tant qu'il n'est pas configuré, en production, les numéros ne sont pas vérifiés et « PIN oublié » ne fonctionne pas (l'outil `npm run reset-admin-pin` reste disponible pour l'administrateur principal).
 3. **Icônes** de l'application installable : provisoires (« S » blanc sur fond orange), à remplacer par le vrai logo.
 4. **Annonces vocales en dioula et sénoufo** : le système est prêt, mais les fichiers audio sont à **enregistrer** (liste dans `Application/public/annonces/LISEZMOI.txt`). En attendant, l'annonce est dite en français.

@@ -20,7 +20,7 @@ Il y a aussi une **page d'accueil publique** (`/` de l'Application) avec présen
 
 | Pour qui | Fonctionnalités |
 |---|---|
-| **Passagers** | Commande avec ou sans compte · prix calculé avant (par la route si OSRM est installé, majorations nuit / pluie) · favoris (Maison, Travail) et dernières destinations · réservation à l'avance · commande pour un proche · suivi de la moto en direct · photo du chauffeur · partage de la course avec un proche · bouton d'urgence 🆘 · notes · réclamations · notifications (y compris téléphone en veille) · mode simple et annonces vocales |
+| **Passagers** | Commande avec ou sans compte · prix calculé avant (par la route grâce à OSRM, majorations nuit / pluie) · favoris (Maison, Travail) et dernières destinations · réservation à l'avance · commande pour un proche · suivi de la moto en direct · photo du chauffeur · partage de la course avec un proche · bouton d'urgence 🆘 · notes · réclamations · notifications (y compris téléphone en veille) · mode simple et annonces vocales |
 | **Chauffeurs** | Inscription avec permis et code de parrainage · documents en photo (avec expiration) · propositions de course avec son, vibration et compte à rebours · écran maintenu allumé · zones les plus demandées · économie de batterie · note des passagers · statistiques (gains, heures en ligne, taux d'acceptation) · rappels d'abonnement · jours offerts par parrainage |
 | **Équipe** | Site séparé, rôles (complet, opérations, finances, modération) · urgences en temps réel avec alarme · validation des chauffeurs et de leurs documents · abonnements · réclamations, avis, messages · tarifs et réglages sans toucher au code · lieux fréquents · messages groupés · rapports mensuels et exports Excel · journal des actions · sauvegardes et état du système |
 | **Tout le monde** | Connexion protégée (5 essais), code SMS pour vérifier les numéros, « PIN oublié » par SMS, application installable sur le téléphone |
@@ -112,12 +112,12 @@ Le navigateur ne connaît donc **qu'une seule adresse** (celle du site qu'il vis
 | Service | Utilisé dans | Rôle |
 |---|---|---|
 | Tuiles **OpenStreetMap** | `components/LeafletMap.tsx` (deux sites) | Les images de la carte |
-| **Nominatim** | `Application/src/lib/places.ts` | Recherche d'adresse et nom d'un point touché sur la carte |
+| **Photon** (Nominatim en secours) | `Application/src/lib/places.ts` | Recherche d'adresse pendant la frappe et nom d'un point touché sur la carte |
 | **Google Fonts** (Plus Jakarta Sans) | `app/layout.tsx` (deux sites) | Police, téléchargée à la compilation |
 | **Gmail SMTP** (facultatif) | `Backend/src/mailer.ts` | Envoi réel des e-mails |
 | **API SMS d'Orange** (facultatif, payant au SMS) | `Backend/src/sms.ts` | Codes de vérification, rappels, alertes |
 | **Services push des navigateurs** (Google, Apple, Mozilla) | `Backend/src/push.ts` via `web-push` | Notifications sur les téléphones (gratuit) |
-| **OSRM** (facultatif, à installer soi-même) | `Backend/src/routing.ts` | Distances et tracés par la route |
+| **OSRM** (serveur public gratuit, ou le vôtre) | `Backend/src/routing.ts` | Distances et tracés par la route |
 | **Synthèse vocale du téléphone** | `Commun/lib/preferences.ts` | Annonces vocales en français |
 
 ## Démarrer le projet
@@ -140,7 +140,7 @@ npm run dev            # API (4000) + Application (3000) + Administration (3001)
 
 Scripts du Backend (dans `Backend/`) : `npm run reset-admin-pin -- 4821` (nouveau PIN pour l'administrateur principal, sans SMS) et `npm run backup` (sauvegarde immédiate).
 
-**En développement**, sans fournisseur SMS, les codes de vérification s'affichent à l'écran (« Mode test ») : vous pouvez tout tester sans téléphone.
+**En développement**, sans fournisseur SMS, les codes de vérification sont écrits dans le terminal du Backend (jamais à l'écran).
 
 ## Variables d'environnement
 
@@ -155,11 +155,12 @@ Scripts du Backend (dans `Backend/`) : `npm run reset-admin-pin -- 4821` (nouvea
 | `ADMIN_URL` (Backend) | `Backend/src/config.ts` | `http://localhost:3001` | Adresse de l'Administration |
 | `SMS_PROVIDER`, `ORANGE_CLIENT_ID`, `ORANGE_CLIENT_SECRET`, `ORANGE_SENDER`, `ORANGE_SENDER_NAME` | `Backend/src/sms.ts` | `console` | Envoi des SMS par Orange ; sinon aucun envoi réel |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `Backend/src/push.ts` | créées dans `data/vapid.json` | Clés des notifications push |
-| `OSRM_URL` | `Backend/src/routing.ts` | vide | Serveur d'itinéraires (distance par la route) |
+| `OSRM_URL` | `Backend/src/routing.ts` | vide = serveur public | Serveur d'itinéraires (distance par la route) ; `off` pour la ligne droite |
+| `ADMIN_PHONE`, `ADMIN_PIN` | `Backend/src/db.ts` | vide | Administrateur principal créé sur une base neuve |
 | `SURPLACE_BACKUP_DIR` | `Backend/src/backup.ts` | `data/backups` | Dossier des sauvegardes |
 | `BACKEND_URL` | `next.config.ts` et `lib/server.ts` des **deux sites** | `http://localhost:4000` | Où trouver l'API |
 | `ADMIN_URL` | `Application/src/lib/server.ts` | `http://localhost:3001` | Où renvoyer un administrateur qui arrive sur l'Application |
-| `NODE_ENV` | partout | `development` en dev, `production` après build | Cookie `secure`, comptes de démo cachés, mode démo chauffeur désactivé |
+| `NODE_ENV` | partout | `development` en dev, `production` après build | Cookie `secure` ; `test` pendant `npm test` (comptes fictifs, code SMS renvoyé) |
 
 Les variables du Backend se mettent dans `Backend/.env` (modèle : `Backend/.env.example`), exclu de git.
 

@@ -57,17 +57,16 @@ course juste terminée    → ✅ « Encaissez X FCFA »
 panneau abonnement ouvert → <SubscriptionPanel>
 course en cours          → <CurrentRide> (Je suis arrivé / Démarrer / Terminer / Annuler, itinéraire Google Maps)
 sinon                    → gains du jour, bouton En ligne / Hors ligne, état d'abonnement,
-                           case « mode démo », liste des demandes à proximité (bouton Accepter)
+                           zones demandées, liste des demandes à proximité (bouton Accepter)
 ```
 
 **Chargements** : `loadProfile` (`/api/me` + `/api/driver/subscription`), `loadAvailable` (`/api/driver/available`), `loadToday` (calcule les gains du jour à partir de `/api/rides`), `loadRide` (`/api/rides/current` ; si la course disparaît, vérifie si le passager l'a annulée). `refreshAll` lance les quatre en parallèle.
 
 **Temps réel** : `available-rides` → recharge les demandes ; `ride` → recharge la course ; `profile` → recharge le profil (validation, suspension, abonnement confirmé par l'admin).
 
-**Position du chauffeur** — trois mécanismes :
-1. **GPS réel** (`watchPosition`) quand le chauffeur est en ligne et que le mode démo est désactivé. Si le GPS est indisponible ou que le site n'est pas en https, bascule automatiquement en mode démo avec un message.
-2. **Mode démo** (activé par défaut en développement, car un ordinateur n'a pas de GPS) : toutes les 2 s, la moto avance de 90 m (`DEMO_STEP_M`, fonction `moveToward`) vers le point de départ puis vers la destination. On peut aussi **toucher la carte** pour placer la moto.
-3. **Envoi au serveur** : chaque changement de `position` est envoyé à `/api/driver/location`, **au plus toutes les 1,5 s** (`lastSent`) pour ne pas surcharger le serveur.
+**Position du chauffeur** — deux mécanismes (il n'y a plus de position simulée) :
+1. **GPS réel** (`watchPosition`) dès que le chauffeur est en ligne. Si le GPS est refusé, introuvable ou que le site n'est pas en https, un message explique quoi faire ; le suivi continue et le message disparaît à la première position reçue.
+2. **Envoi au serveur** : chaque changement de `position` est envoyé à `/api/driver/location`, **au plus toutes les 1,5 s** (`lastSent`) pour ne pas surcharger le serveur.
 
 **Actions** : `toggleOnline`, `accept(id)`, `step("arrive" | "start" | "complete" | "cancel")`. La fonction `run(key, fn)` gère le bouton en cours de chargement (`busy`) et les erreurs pour toutes.
 
@@ -102,7 +101,7 @@ Composants internes : `ClickHandler` (écoute les clics), `FitBounds` (recadre ;
 ### `PlaceSearch.tsx` — champ de lieu avec suggestions
 
 - Suggestions **locales** immédiates : `searchPopularPlaces` (lieux fréquents de Korhogo, sans accent ni majuscule).
-- Suggestions **Nominatim** : à partir de 3 caractères, après **500 ms sans frappe** (« debounce », pour ne pas interroger le service à chaque lettre). La requête précédente est annulée (`AbortController`) si l'utilisateur continue de taper.
+- Suggestions **Photon** (Nominatim en secours) : à partir de 3 caractères, après **300 ms sans frappe** (« debounce », pour ne pas interroger le service à chaque lettre). La requête précédente est annulée (`AbortController`) si l'utilisateur continue de taper.
 - Les doublons entre les deux listes sont retirés.
 - Si le lieu est choisi sur la carte, le texte du champ se met à jour (`useEffect` sur `value`).
 - `active` / `onActivate` : le champ actif (bordure) est celui que le prochain clic sur la carte remplira.
@@ -218,7 +217,7 @@ Mesure en continu (`ResizeObserver`) la hauteur du panneau du bas **sur mobile**
 | `types.ts` | Types partagés avec le Backend + types de l'admin (`AdminDriver`, `AdminPassenger`, `AdminCounts`, `AdminOverview`, `DriverSubscription`, `PublicReviews`…). |
 | `pricing.ts` | Copie exacte de `Backend/src/pricing.ts`. |
 | `site.ts` | `CONTACT` (téléphone, WhatsApp, e-mail, adresse, horaires affichés sur l'accueil) et `CONTACT_SUBJECTS`. |
-| `places.ts` | `CITY_NAME`, `CITY_CENTER` (centre de Korhogo), `POPULAR_PLACES` (16 lieux, coordonnées approximatives), `searchPopularPlaces` (recherche sans accents), `searchAddress` (Nominatim limité à un rectangle autour de Korhogo : `viewbox` + `bounded`), `reverseGeocode` (nom d'un point ; en cas d'échec, « Point sur la carte (lat, lng) »). `shortLabel` garde les 3 premières parties de l'adresse. |
+| `places.ts` | `CITY_NAME`, `CITY_CENTER` (centre de Korhogo), `POPULAR_PLACES` (16 lieux, coordonnées approximatives), `searchPopularPlaces` (recherche sans accents), `searchAddress` (Photon, limité à un rectangle autour de Korhogo `BBOX` et classé par proximité du centre ; Nominatim si Photon ne répond pas), `reverseGeocode` (nom d'un point par Photon, puis Nominatim ; en cas d'échec, « Point sur la carte (lat, lng) »). `photonLabel` compose « nom, rue, quartier » sans répétition. |
 | `geolocation.ts` | `locateUser(onUpdate)` : utilise `watchPosition` pour **affiner** la position (la première lecture vient souvent du réseau, imprécise ; le GPS arrive ensuite). S'arrête dès que la précision atteint 30 m ou après 15 s, et renvoie la meilleure lecture. Si le GPS ne répond pas, tente une position approximative. `geolocationErrorMessage` traduit chaque échec (pas https, refusé, introuvable, trop long) en conseil compréhensible. |
 | `format.ts` | `STATUS_LABELS` (« Chauffeur en route »…), `STATUS_STYLES` (couleurs des pastilles), `formatDateTime` (« 5 oct., 14:32 »), `formatPhone` (« 07 00 00 00 01 »), `minutesFromKm`. |
 | `theme.ts` | `THEME_STORAGE_KEY` et `THEME_INIT_SCRIPT` (script minifié exécuté dans `<head>` avant l'affichage). |
@@ -231,7 +230,7 @@ Mesure en continu (`ResizeObserver`) la hauteur du panneau du bas **sur mobile**
 
 | Fichier | Rôle |
 |---|---|
-| `components/OtpField.tsx` | « Recevoir le code » + champ à 6 chiffres ; compte à rebours avant renvoi ; affiche le code en mode test |
+| `components/OtpField.tsx` | « Recevoir le code » + champ à 6 chiffres ; compte à rebours avant renvoi (le code n'est jamais affiché à l'écran) |
 | `components/PinResetForm.tsx` | PIN oublié : numéro, code SMS, nouveau PIN (utilisé par les deux sites) |
 | `components/PwaSetup.tsx` | Enregistre `/sw.js` ; `InstallButton` affiche « 📲 Installer l'application » quand le téléphone le propose |
 | `components/LeafletMap.tsx` | Nouveau : `route` accepte un **tracé complet** (ligne orange pleine) ; `heat` dessine les **zones demandées** (cercles plus grands et plus foncés là où il y a le plus de demandes) |

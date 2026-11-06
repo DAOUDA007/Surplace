@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { IS_TEST } from "./config";
 import { hashPin } from "./password";
 
 export const DB_PATH = process.env.SURPLACE_DB ?? path.join(process.cwd(), "data", "surplace.db");
@@ -350,10 +351,35 @@ const DEFAULT_PLACES: [string, number, number][] = [
   ["Waraniéné, village des tisserands", 9.418, -5.647],
 ];
 
+/**
+ * Premier administrateur d'une base neuve, créé à partir de ADMIN_PHONE et ADMIN_PIN (Backend/.env ou Render).
+ * Aucun compte de démonstration n'est créé, sauf pour les tests automatiques.
+ */
 function seed(db: Database.Database) {
   const hasAdmin = db.prepare("SELECT 1 FROM users WHERE role = 'admin'").get();
   if (hasAdmin) return;
+  if (IS_TEST) {
+    seedTestAccounts(db);
+    return;
+  }
 
+  const phone = (process.env.ADMIN_PHONE ?? "").replace(/[\s.\-()]/g, "").replace(/^(\+|00)225/, "");
+  const pin = process.env.ADMIN_PIN ?? "";
+  if (!/^0\d{9}$/.test(phone) || !/^\d{4}$/.test(pin)) {
+    console.warn(
+      "[base] Aucun administrateur : définissez ADMIN_PHONE (10 chiffres) et ADMIN_PIN (4 chiffres), puis redémarrez le serveur.",
+    );
+    return;
+  }
+  const name = process.env.ADMIN_NAME?.trim() || "Administrateur";
+  db.prepare(
+    "INSERT INTO users (role, name, phone, pin_hash, created_at, is_principal) VALUES ('admin', ?, ?, ?, ?, 1)",
+  ).run(name, phone, hashPin(pin), new Date().toISOString());
+  console.log(`[base] Administrateur principal créé : ${phone}. Vous pouvez retirer ADMIN_PIN des variables d'environnement.`);
+}
+
+/** Comptes utilisés par les tests automatiques (PIN 1234). */
+function seedTestAccounts(db: Database.Database) {
   const now = new Date().toISOString();
   const insertUser = db.prepare(
     "INSERT INTO users (role, name, phone, pin_hash, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -367,8 +393,7 @@ function seed(db: Database.Database) {
     db.prepare("UPDATE users SET is_principal = 1 WHERE id = ?").run(admin.lastInsertRowid);
     insertUser.run("passenger", "Awa Koné", "0700000001", hashPin("1234"), now);
     const driver = insertUser.run("driver", "Moussa Traoré", "0700000002", hashPin("1234"), now);
-    // Position de départ du chauffeur de démonstration : centre-ville de Korhogo.
-    // Abonnement d'un an offert au compte de démonstration.
+    // Chauffeur placé au centre-ville de Korhogo, avec un an d'abonnement.
     const demoUntil = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();
     insertDriver.run(driver.lastInsertRowid, "AB 1234 CI", "Haojue 125", 9.4565, -5.6295, now, demoUntil);
   })();

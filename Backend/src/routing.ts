@@ -1,14 +1,22 @@
+import { IS_TEST } from "./config";
 import { activeSurcharges, durationFor, estimateTrip, priceFor } from "./pricing";
 import { getSettings } from "./settings";
 import type { LatLng, TripEstimate } from "./types";
 
 /**
- * Distance et durée d'un trajet.
- * Avec OSRM_URL (serveur d'itinéraires OSRM, ex. http://localhost:5000), la distance est mesurée par la route
- * et le tracé est renvoyé. Sinon, ou si OSRM ne répond pas : ligne droite × facteur route (réglable).
+ * Distance et durée d'un trajet, mesurées par la route grâce à un serveur d'itinéraires OSRM.
+ * Par défaut : le serveur public et gratuit d'OpenStreetMap (FOSSGIS), données de Côte d'Ivoire comprises.
+ * OSRM_URL permet d'utiliser votre propre serveur (ex. http://localhost:5000) ; OSRM_URL=off le désactive.
+ * Si OSRM ne répond pas : ligne droite × facteur route (réglable).
  */
-const OSRM_URL = process.env.OSRM_URL?.replace(/\/$/, "");
+const PUBLIC_OSRM = "https://routing.openstreetmap.de/routed-car";
+const configured = process.env.OSRM_URL?.trim();
+const OSRM_URL =
+  configured === "off" || (IS_TEST && !configured) ? undefined : (configured || PUBLIC_OSRM).replace(/\/$/, "");
 export const osrmEnabled = !!OSRM_URL;
+export const osrmHost = OSRM_URL ? new URL(OSRM_URL).host : "";
+/** Le serveur public demande que chaque application s'identifie. */
+const USER_AGENT = "SURPLACE/1.0 (taxi-moto, Korhogo)";
 
 const cache = new Map<string, { distanceKm: number; durationMin: number; geometry: LatLng[] }>();
 
@@ -28,7 +36,7 @@ async function osrmRoute(a: LatLng, b: LatLng) {
   const hit = cache.get(key);
   if (hit) return hit;
   const url = `${OSRM_URL}/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(4000) });
   if (!res.ok) throw new Error(`OSRM ${res.status}`);
   const data = (await res.json()) as {
     code: string;

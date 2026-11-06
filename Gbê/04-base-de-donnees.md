@@ -20,7 +20,7 @@ Pour **explorer** la base, installez par exemple « DB Browser for SQLite » ou 
 | `foreign_keys = ON` | Active la vérification des liens entre tables (désactivée par défaut dans SQLite) |
 | `db.exec(SCHEMA)` | Crée les tables **si elles n'existent pas** (`CREATE TABLE IF NOT EXISTS`) |
 | `migrate(db)` | Met à jour une ancienne base |
-| `seed(db)` | Ajoute les comptes de démonstration dans une base vide |
+| `seed(db)` | Crée l'administrateur principal d'une base vide (`ADMIN_PHONE`, `ADMIN_PIN`) |
 
 ## Schéma des relations
 
@@ -137,22 +137,18 @@ Quand le code évolue et qu'une colonne est ajoutée, `CREATE TABLE IF NOT EXIST
 1. Lit les colonnes existantes avec `PRAGMA table_info(...)`.
 2. Ajoute celles qui manquent avec `ALTER TABLE ... ADD COLUMN` : `rides.review_hidden`, `users.blocked`, `users.email`, `users.is_principal`, `users.deleted_at`, `users.guest`, `users.guest_phone`, `drivers.license_number`, `drivers.subscription_until`.
 3. S'assure qu'il existe **toujours un administrateur principal** (à défaut, le plus ancien admin actif le devient).
-4. Lors de l'ajout de `subscription_until`, offre un an au chauffeur de démonstration.
+4. Lors de l'ajout de `subscription_until`, offre un an à l'ancien chauffeur de démonstration (supprimé ensuite par `removeDemoAccounts`).
 5. Corrige une ancienne version qui plaçait les chauffeurs à **Abidjan** (latitude < 7) : ils sont replacés au centre de Korhogo.
 
 **Pour ajouter une colonne à l'avenir** : ajoutez-la dans `SCHEMA` (pour les bases neuves) **et** un bloc `if (!columns.includes("nouvelle_colonne")) ALTER TABLE ...` dans `migrate()` (pour les bases existantes).
 
-## Les données de démonstration (`seed()`)
+## Le premier administrateur (`seed()`)
 
-Exécuté seulement si **aucun admin n'existe** (donc une seule fois, sur une base neuve). Crée, avec le PIN `1234` :
+Exécuté seulement si **aucun admin n'existe** (donc une seule fois, sur une base neuve). Il crée l'administrateur principal à partir des variables d'environnement `ADMIN_PHONE` (10 chiffres), `ADMIN_PIN` (4 chiffres) et, facultatif, `ADMIN_NAME`. Sans ces variables, le serveur affiche un avertissement et aucun compte n'est créé.
 
-| Rôle | Nom | Téléphone |
-|---|---|---|
-| Admin (principal) | Administrateur | 07 00 00 00 00 |
-| Passager | Awa Koné | 07 00 00 00 01 |
-| Chauffeur (validé, 1 an d'abonnement, au centre de Korhogo) | Moussa Traoré | 07 00 00 00 02 — moto Haojue 125, plaque AB 1234 CI |
+**Il n'y a plus de comptes de démonstration.** Seuls les tests automatiques (`npm test`, `NODE_ENV=test`) créent des comptes fictifs (PIN `1234`), dans une base temporaire (`seedTestAccounts`).
 
-> Le README indique un admin `05 74 32 88 18` / PIN `2002` : c'est sans doute le compte admin de démonstration modifié ensuite via « Mon compte ». Sur une **base neuve**, c'est bien `07 00 00 00 00` / `1234` qui est créé.
+Au démarrage, `removeDemoAccounts()` (`accounts.ts`, appelée par `server.ts`) supprime les anciens comptes de démonstration (Awa Koné 07 00 00 00 01, Moussa Traoré 07 00 00 00 02), seulement s'ils ont encore leur nom et leur PIN `1234` d'origine. S'ils ont des courses, ils sont anonymisés comme toute suppression de compte.
 
 **PIN administrateur oublié** : `npm run reset-admin-pin -- 4821` dans `Backend/` (voir [03-backend.md](03-backend.md)).
 
