@@ -2,9 +2,11 @@
 // ⚠️ Fichier copié depuis Commun/components/LeafletMap.tsx par scripts/sync-commun.mjs : modifiez l'original dans Commun/.
 
 import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import L from "leaflet";
 import { useEffect, useMemo } from "react";
-import { Circle, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { Circle, MapContainer, Marker, Polyline, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import { CITY_CENTER } from "@/lib/places";
 import type { LatLng } from "@/lib/types";
 
@@ -58,6 +60,62 @@ const ICONS: Record<MarkerKind, L.DivIcon> = {
   }),
 };
 
+/**
+ * Fond de carte vectoriel OpenFreeMap (gratuit, sans clé, usage commercial autorisé) : rues nettes à tous
+ * les niveaux de zoom, noms lisibles, style proche de Google Maps. Données OpenStreetMap.
+ * Si le téléphone ne sait pas l'afficher (pas de WebGL) ou si le serveur ne répond pas, on revient
+ * aux images classiques d'OpenStreetMap.
+ */
+const VECTOR_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const VECTOR_ATTRIBUTION =
+  '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a>';
+const RASTER_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const RASTER_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+function webglSupported() {
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+function BaseLayer() {
+  const map = useMap();
+  useEffect(() => {
+    let layer: L.Layer | null = null;
+    let attribution = "";
+    const show = (next: L.Layer, text: string) => {
+      if (layer) map.removeLayer(layer);
+      if (attribution) map.attributionControl.removeAttribution(attribution);
+      layer = next.addTo(map);
+      attribution = text;
+      map.attributionControl.addAttribution(text);
+    };
+    const raster = () => show(L.tileLayer(RASTER_URL, { maxZoom: 19 }), RASTER_ATTRIBUTION);
+
+    if (!webglSupported()) {
+      raster();
+    } else {
+      const vector = maplibreGL({ style: VECTOR_STYLE, attributionControl: false });
+      show(vector, VECTOR_ATTRIBUTION);
+      // Style injoignable (réseau, panne du serveur) : fond classique.
+      const gl = vector.getMaplibreMap();
+      let loaded = false;
+      gl.once("load", () => (loaded = true));
+      gl.on("error", () => {
+        if (!loaded && layer === vector) raster();
+      });
+    }
+    return () => {
+      if (layer) map.removeLayer(layer);
+      if (attribution) map.attributionControl.removeAttribution(attribution);
+    };
+  }, [map]);
+  return null;
+}
+
 function ClickHandler({ onClick }: { onClick?: (p: LatLng) => void }) {
   useMapEvents({
     click(e) {
@@ -104,13 +162,11 @@ export default function LeafletMap({
     <MapContainer
       center={[center.lat, center.lng]}
       zoom={13}
+      maxZoom={19}
       zoomControl={false}
       className={className ?? "h-full w-full"}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <BaseLayer />
       <ClickHandler onClick={onMapClick} />
       <FitBounds points={fitTo} bottomPadding={bottomPadding} />
       {route && (

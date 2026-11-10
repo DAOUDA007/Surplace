@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { searchAddress, searchPopularPlaces } from "@/lib/places";
 import type { Place } from "@/lib/types";
@@ -24,6 +24,7 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
   const [focused, setFocused] = useState(false);
   const [remote, setRemote] = useState<Place[]>([]);
   const [searching, setSearching] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
   // Le lieu peut aussi être choisi sur la carte : on synchronise le texte.
   useEffect(() => {
@@ -68,8 +69,34 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
     setFocused(false);
   }
 
+  // Sur téléphone, le champ actif passe en plein écran, en haut : les suggestions restent au-dessus du clavier.
+  // Le même <input> reste en place dans l'arbre React, il garde donc le focus et le clavier reste ouvert.
+  const fullScreen = focused
+    ? "max-md:fixed max-md:inset-0 max-md:z-[1300] max-md:flex max-md:flex-col max-md:bg-surface max-md:p-4 max-md:pt-[max(1rem,env(safe-area-inset-top))]"
+    : "";
+
   return (
-    <div className="relative">
+    <div className={`relative ${fullScreen}`}>
+      {focused && (
+        <div className="mb-3 flex items-center justify-between md:hidden">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => input.current?.blur()}
+            className="rounded-full bg-subtle px-4 py-2 text-sm font-semibold"
+          >
+            ← Retour
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => input.current?.blur()}
+            className="text-sm font-semibold text-brand"
+          >
+            Choisir sur la carte
+          </button>
+        </div>
+      )}
       <div
         className={`flex items-center gap-2 rounded-2xl border-2 bg-subtle px-3 transition ${
           active ? "border-ink bg-surface" : "border-transparent"
@@ -79,6 +106,7 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
           className={`h-2.5 w-2.5 shrink-0 ${kind === "pickup" ? "rounded-full bg-green-600" : "rounded-sm bg-red-600"}`}
         />
         <input
+          ref={input}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
@@ -87,19 +115,21 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
           }}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           placeholder={placeholder}
-          className="h-12 min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none placeholder:text-faint"
+          enterKeyHint="search"
+          /* 16 px sur téléphone : en dessous, l'iPhone zoome automatiquement sur le champ. */
+          className="h-12 min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:text-faint md:text-[15px]"
         />
         {action}
       </div>
       {focused && (suggestions.length > 0 || searching) && (
-        <ul className="animate-pop absolute inset-x-0 top-full z-[1200] mt-1 max-h-64 origin-top overflow-auto rounded-2xl bg-surface py-1 shadow-xl ring-1 ring-line">
+        <ul className="animate-pop z-[1200] mt-1 origin-top overflow-auto rounded-2xl bg-surface py-1 max-md:mt-3 max-md:min-h-0 max-md:flex-1 md:absolute md:inset-x-0 md:top-full md:max-h-64 md:shadow-xl md:ring-1 md:ring-line">
           {suggestions.map((p, i) => (
             <li key={`${i}-${p.label}-${p.lat}`}>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => select({ label: p.label, lat: p.lat, lng: p.lng })}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-subtle"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-subtle md:py-2.5"
               >
                 <span className="min-w-0 flex-1 truncate">{p.label}</span>
                 {p.tag && <span className="shrink-0 text-xs text-muted">{p.tag}</span>}
