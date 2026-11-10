@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OtpField } from "@/components/OtpField";
+import { TermsCheckbox } from "@/components/TermsGate";
 import { Button, ErrorMessage } from "@/components/ui";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { api } from "@/lib/api";
@@ -126,6 +127,7 @@ export function RegisterForm({
     referralCode: "",
     code: "",
   });
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const { submit, error, loading } = useSubmit();
   const config = usePublicConfig();
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
@@ -138,7 +140,7 @@ export function RegisterForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        submit("/api/auth/register", { ...form, role });
+        submit("/api/auth/register", { ...form, role, acceptTerms });
       }}
     >
       <div className="grid grid-cols-2 gap-1 rounded-2xl bg-subtle p-1">
@@ -251,6 +253,7 @@ export function RegisterForm({
           Vos courses déjà commandées sans compte seront conservées.
         </p>
       )}
+      <TermsCheckbox required checked={acceptTerms} onChange={setAcceptTerms} />
       <ErrorMessage>{error}</ErrorMessage>
       <Button type="submit" loading={loading} disabled={needCode && form.code.length !== 6} className="w-full">
         Créer mon compte

@@ -37,6 +37,8 @@ export interface User {
   /** Personne à prévenir en cas d'urgence (passagers et chauffeurs). */
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
+  /** Passager ou chauffeur : a accepté la version en vigueur des conditions d'utilisation. */
+  termsAccepted?: boolean;
 }
 
 export interface AdminAccount {

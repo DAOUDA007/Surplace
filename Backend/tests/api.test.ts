@@ -95,16 +95,36 @@ describe("Santé et configuration", () => {
 describe("Inscription et connexion", () => {
   it("exige le code SMS pour s'inscrire", async () => {
     const c = new Client();
-    const body = { role: "passenger", name: "Fatou Coulibaly", phone: "0711223344", pin: "4321" };
+    const body = { role: "passenger", name: "Fatou Coulibaly", phone: "0711223344", pin: "4321", acceptTerms: true };
     const without = await c.post("/api/auth/register", body);
     assert.equal(without.status, 400);
     const code = await otp(c, "0711223344", "register");
     const wrong = await c.post("/api/auth/register", { ...body, code: "000000" === code ? "111111" : "000000" });
     assert.equal(wrong.status, 400);
+    const refused = await c.post("/api/auth/register", { ...body, code, acceptTerms: false });
+    assert.equal(refused.status, 400, "les conditions d'utilisation doivent être acceptées");
     const ok = await c.post("/api/auth/register", { ...body, code });
     assert.equal(ok.status, 200, JSON.stringify(ok.data));
     const me = await c.get("/api/me");
     assert.equal(me.data.user.name, "Fatou Coulibaly");
+    assert.equal(me.data.user.termsAccepted, true);
+  });
+
+  it("un utilisateur qui n'a pas accepté les conditions ne peut ni commander ni passer en ligne", async () => {
+    const { db } = await import("../src/db");
+    db.prepare("UPDATE users SET terms_version = NULL WHERE phone IN ('0700000001', '0700000002')").run();
+    const passenger = await loginAs("0700000001");
+    assert.equal((await passenger.get("/api/me")).data.user.termsAccepted, false);
+    const order = await passenger.post("/api/rides", { pickup: GARE, dropoff: UNIV });
+    assert.equal(order.status, 403);
+    const driver = await loginAs("0700000002");
+    assert.equal((await driver.post("/api/driver/status", { online: true })).status, 403);
+
+    assert.equal((await passenger.post("/api/me/terms", {})).status, 400);
+    assert.equal((await passenger.post("/api/me/terms", { acceptTerms: true })).status, 200);
+    assert.equal((await driver.post("/api/me/terms", { acceptTerms: true })).status, 200);
+    assert.equal((await passenger.get("/api/me")).data.user.termsAccepted, true);
+    assert.equal((await driver.post("/api/driver/status", { online: false })).status, 200);
   });
 
   it("bloque après 5 codes PIN faux, et « PIN oublié » débloque", async () => {
@@ -173,6 +193,7 @@ describe("Courses", () => {
       motoModel: "Apsonic",
       licenseNumber: "CI-555666",
       code,
+      acceptTerms: true,
     });
     assert.equal(created.status, 200, JSON.stringify(created.data));
     const me = await reg.get("/api/me");
@@ -207,14 +228,27 @@ describe("Courses", () => {
   it("commande sans compte avec code SMS, puis création du compte en gardant la course", async () => {
     const guest = new Client();
     const code = await otp(guest, "0799887766", "guest");
-    const order = await guest.post("/api/rides/guest", { name: "Adama Ouattara", phone: "0799887766", code, pickup: GARE, dropoff: UNIV });
+    const order = await guest.post("/api/rides/guest", {
+      name: "Adama Ouattara",
+      phone: "0799887766",
+      code,
+      pickup: GARE,
+      dropoff: UNIV,
+      acceptTerms: true,
+    });
     assert.equal(order.status, 200, JSON.stringify(order.data));
     const me = await guest.get("/api/me");
     assert.equal(me.data.user.isGuest, true);
     assert.equal(me.data.user.phone, "0799887766");
 
     await guest.post(`/api/rides/${order.data.ride.id}/action`, { action: "cancel" });
-    const convert = await guest.post("/api/auth/register", { role: "passenger", name: "Adama Ouattara", phone: "0799887766", pin: "1357" });
+    const convert = await guest.post("/api/auth/register", {
+      role: "passenger",
+      name: "Adama Ouattara",
+      phone: "0799887766",
+      pin: "1357",
+      acceptTerms: true,
+    });
     assert.equal(convert.status, 200, JSON.stringify(convert.data));
     const history = await guest.get("/api/rides");
     assert.equal(history.data.rides.length, 1, "la course commandée en invité est conservée");

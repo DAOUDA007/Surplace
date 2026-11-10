@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { IS_TEST } from "./config";
+import { TERMS_VERSION } from "./site";
 import { hashPin } from "./password";
 
 export const DB_PATH = process.env.SURPLACE_DB ?? path.join(process.cwd(), "data", "surplace.db");
@@ -168,6 +169,8 @@ function migrateFeatures(db: Database.Database) {
   addColumn(db, "users", "emergency_contact_phone", "TEXT");
   addColumn(db, "users", "admin_role", "TEXT NOT NULL DEFAULT 'full'"); // full, operations, finance, moderation
   addColumn(db, "users", "referral_code", "TEXT");
+  addColumn(db, "users", "terms_version", "TEXT"); // version des conditions d'utilisation acceptée
+  addColumn(db, "users", "terms_accepted_at", "TEXT");
   // Chauffeurs
   addColumn(db, "drivers", "referred_by", "INTEGER");
   addColumn(db, "drivers", "referral_rewarded", "INTEGER NOT NULL DEFAULT 0");
@@ -396,6 +399,7 @@ function seedTestAccounts(db: Database.Database) {
     // Chauffeur placé au centre-ville de Korhogo, avec un an d'abonnement.
     const demoUntil = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();
     insertDriver.run(driver.lastInsertRowid, "AB 1234 CI", "Haojue 125", 9.4565, -5.6295, now, demoUntil);
+    db.prepare("UPDATE users SET terms_version = ?, terms_accepted_at = ?").run(TERMS_VERSION, now);
   })();
 }
 

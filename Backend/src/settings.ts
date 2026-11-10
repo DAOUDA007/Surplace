@@ -30,7 +30,7 @@ export function getSettings(): AppSettings {
   } catch {
     saved = null;
   }
-  cache = merge(DEFAULT_SETTINGS, saved);
+  cache = merge(defaultSettings(), saved);
   return cache;
 }
 
@@ -58,6 +58,30 @@ function paymentLink(value: unknown, label: string) {
     throw new HttpError(400, `${label} : adresse invalide (elle doit commencer par https://).`);
   }
   return url.toString();
+}
+
+/**
+ * Liens d'encaissement par défaut, lus dans PAYMENT_LINK_MONTHLY et PAYMENT_LINK_YEARLY.
+ * Utile quand la base est effacée à chaque redémarrage (offre gratuite de Render) : les liens reviennent tout seuls.
+ * Un lien enregistré depuis l'administration reste prioritaire. Une adresse invalide est ignorée.
+ */
+function envPaymentLink(name: string) {
+  try {
+    return paymentLink(process.env[name], name);
+  } catch {
+    console.warn(`[réglages] ${name} ignoré : l'adresse doit commencer par https://`);
+    return "";
+  }
+}
+
+function defaultSettings(): AppSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    paymentLinks: {
+      monthly: envPaymentLink("PAYMENT_LINK_MONTHLY"),
+      yearly: envPaymentLink("PAYMENT_LINK_YEARLY"),
+    },
+  };
 }
 
 /** Valide et enregistre les réglages envoyés par l'administration. */

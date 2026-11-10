@@ -14,6 +14,27 @@ export const CONTACT = {
   emergencyPhone: "+225 05 74 32 88 18",
 };
 
+/**
+ * Identité de l'éditeur, affichée dans les conditions d'utilisation et la politique de confidentialité.
+ * À compléter avant la mise en service : les valeurs entre crochets s'affichent telles quelles sur le site.
+ */
+export const LEGAL = {
+  /** Nom de l'entreprise ou de la personne qui exploite SURPLACE. */
+  publisher: "[Raison sociale ou nom de l'exploitant]",
+  /** Forme juridique et numéro d'immatriculation, ex. « SARL au capital de 1 000 000 FCFA, RCCM CI-KRG-2026-B-00000 ». */
+  registration: "[Forme juridique et numéro RCCM]",
+  /** Personne responsable du service et des données. */
+  director: "[Nom du responsable]",
+  /** Numéro de déclaration ou d'autorisation auprès de l'ARTCI (protection des données personnelles). */
+  artci: "[Numéro de déclaration ARTCI]",
+};
+
+/**
+ * Version des conditions d'utilisation et de la politique de confidentialité (date de la dernière modification).
+ * À changer à chaque modification du texte : chaque utilisateur devra accepter la nouvelle version.
+ */
+export const TERMS_VERSION = "2026-11-10";
+
 /** Numéros d'urgence publics en Côte d'Ivoire, proposés par le bouton Urgence. */
 export const EMERGENCY_NUMBERS = [
   { label: "Police secours", phone: "110" },

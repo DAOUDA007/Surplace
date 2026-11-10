@@ -7,6 +7,7 @@ import { CountUp } from "@/components/CountUp";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { MapView, type MapMarker } from "@/components/MapView";
 import { ShareRideButton } from "@/components/ShareRideButton";
+import { TermsGate } from "@/components/TermsGate";
 import { Button, ErrorMessage, Route, Stars } from "@/components/ui";
 import { useServerEvents } from "@/hooks/useServerEvents";
 import { useSheetHeight } from "@/hooks/useSheetHeight";
@@ -319,6 +320,7 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
 
   return (
     <AppShell name={user.name} links={LINKS} role="driver" map={map} topCenter={<span className="hidden sm:block">{onlinePill}</span>}>
+      <TermsGate user={user} />
       <Sheet ref={sheet.ref}>
         {notice && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>}
         {error && (

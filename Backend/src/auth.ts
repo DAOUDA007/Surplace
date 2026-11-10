@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "./db";
 import { HttpError } from "./http";
 import { permissionsFor } from "./permissions";
+import { TERMS_VERSION } from "./site";
 import type { AdminPermission, AdminRole, Role, User } from "./types";
 
 export const SESSION_COOKIE = "surplace_session";
@@ -38,20 +39,32 @@ export function getCurrentUser(req: Request): User | null {
     .prepare(
       `SELECT u.id, u.role, u.name, COALESCE(u.guest_phone, u.phone) AS phone, u.email,
               u.is_principal AS isPrincipal, u.guest AS isGuest, u.admin_role AS adminRole,
-              u.emergency_contact_name AS emergencyContactName, u.emergency_contact_phone AS emergencyContactPhone
+              u.emergency_contact_name AS emergencyContactName, u.emergency_contact_phone AS emergencyContactPhone,
+              u.terms_version AS termsVersion
          FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token = ? AND s.expires_at > ? AND u.blocked = 0 AND u.deleted_at IS NULL`,
     )
     .get(token, new Date().toISOString()) as
-    | (Omit<User, "isPrincipal" | "isGuest" | "adminRole"> & { isPrincipal: number; isGuest: number; adminRole: AdminRole })
+    | (Omit<User, "isPrincipal" | "isGuest" | "adminRole"> & {
+        isPrincipal: number;
+        isGuest: number;
+        adminRole: AdminRole;
+        termsVersion: string | null;
+      })
     | undefined;
   if (!row) return null;
-  const { isPrincipal, isGuest, adminRole, emergencyContactName, emergencyContactPhone, ...user } = row;
+  const { isPrincipal, isGuest, adminRole, emergencyContactName, emergencyContactPhone, termsVersion, ...user } = row;
   if (user.role === "admin") {
     const principal = isPrincipal === 1;
     return { ...user, isPrincipal: principal, adminRole, permissions: permissionsFor(adminRole, principal) };
   }
-  return { ...user, emergencyContactName, emergencyContactPhone, ...(isGuest ? { isGuest: true } : {}) };
+  return {
+    ...user,
+    emergencyContactName,
+    emergencyContactPhone,
+    termsAccepted: termsVersion === TERMS_VERSION,
+    ...(isGuest ? { isGuest: true } : {}),
+  };
 }
 
 /** Lève une erreur 401/403 si l'utilisateur n'est pas connecté ou n'a pas le bon rôle. */

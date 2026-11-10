@@ -89,6 +89,7 @@ import {
 } from "./rides";
 import { osrmEnabled, estimateRoute } from "./routing";
 import { getSettings, updateSettings } from "./settings";
+import { assertTermsChecked, recordTermsAcceptance, requireTerms } from "./terms";
 import { smsProviderName } from "./sms";
 import { demandCells, driverStats } from "./stats";
 import {
@@ -199,6 +200,7 @@ api.post(
     const phone = normalizePhone(body.phone);
     const pin = validatePin(body.pin);
     const email = optionalEmail(body.email);
+    assertTermsChecked(body);
 
     // Un passager invité qui s'inscrit garde son compte et ses courses.
     // Son numéro a déjà été vérifié à la commande ; un autre numéro doit l'être maintenant.
@@ -206,6 +208,7 @@ api.post(
     if (current?.isGuest && role === "passenger") {
       if (phone !== current.phone) verifyOtp(phone, "register", body.code);
       convertGuest(current.id, body);
+      recordTermsAcceptance(current.id);
       if (email) sendMailInBackground(welcomeEmail({ name, email, role }));
       return { redirect: homeFor(role) };
     }
@@ -233,6 +236,7 @@ api.post(
       return id;
     })();
     if (role === "driver") ensureReferralCode(userId);
+    recordTermsAcceptance(userId);
 
     createSession(res, userId);
     // Message de bienvenue envoyé en arrière-plan : un échec d'envoi ne bloque pas l'inscription.
@@ -300,6 +304,17 @@ api.get(
   route((req) => {
     const user = requireUser(req);
     return { user, driver: user.role === "driver" ? getDriverProfile(user.id) : null };
+  }),
+);
+
+/** Accepte la version en vigueur des conditions d'utilisation (utilisateur inscrit avant, ou nouvelle version). */
+api.post(
+  "/me/terms",
+  route((req) => {
+    const user = requireUser(req);
+    assertTermsChecked(req.body);
+    recordTermsAcceptance(user.id);
+    return { ok: true };
   }),
 );
 
@@ -435,6 +450,7 @@ api.post(
   "/rides",
   route(async (req) => {
     const user = requireUser(req, "passenger");
+    requireTerms(user);
     const body = req.body ?? {};
     const { scheduledAt, rider, trip } = await prepareOrder(body);
     const ride = createRide(user, body.pickup, body.dropoff, trip, { scheduledAt, rider });
@@ -455,11 +471,13 @@ api.post(
     const body = req.body ?? {};
     const phone = normalizePhone(body.phone);
     requiredText(body.name, "Nom");
+    assertTermsChecked(body);
     const { scheduledAt, rider, trip } = await prepareOrder(body);
     verifyOtp(phone, "guest", body.code);
     // Le compte invité n'est créé que si la course est valide (sinon tout est annulé).
     const ride = db.transaction(() => {
       const userId = createGuestPassenger(body);
+      recordTermsAcceptance(userId);
       return createRide({ id: userId, role: "passenger", name: "", phone: "" }, body.pickup, body.dropoff, trip, {
         scheduledAt,
         rider,
@@ -490,6 +508,7 @@ api.post(
     const user = requireUser(req);
     const action = req.body?.action as RideAction;
     if (!ACTIONS.includes(action)) throw new HttpError(400, "Action inconnue.");
+    if (action === "accept") requireTerms(user);
     const ride = applyAction(parseId(req.params.id), user, action);
     // Une course rendue par un chauffeur est proposée tout de suite au suivant.
     if (action === "cancel" && user.role === "driver") dispatchTick();
@@ -573,6 +592,7 @@ api.post(
   "/driver/status",
   route((req) => {
     const user = requireUser(req, "driver");
+    if (req.body?.online === true) requireTerms(user);
     const driver = setDriverOnline(user, req.body?.online === true);
     if (driver.isOnline) dispatchTick();
     return { driver };

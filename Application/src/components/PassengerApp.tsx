@@ -10,6 +10,7 @@ import { MapView, type MapMarker } from "@/components/MapView";
 import { OtpField } from "@/components/OtpField";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { ShareRideButton } from "@/components/ShareRideButton";
+import { TermsCheckbox, TermsGate } from "@/components/TermsGate";
 import { Button, ErrorMessage, Route, Stars } from "@/components/ui";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { useServerEvents } from "@/hooks/useServerEvents";
@@ -70,7 +71,7 @@ export function PassengerApp({ user }: { user: User | null }) {
   const [accuracy, setAccuracy] = useState<{ center: LatLng; radius: number } | null>(null);
   const [locationHint, setLocationHint] = useState("");
   /** Visiteur sans compte : nom, numéro et code SMS demandés au moment de commander. */
-  const [contact, setContact] = useState({ name: "", phone: "", code: "" });
+  const [contact, setContact] = useState({ name: "", phone: "", code: "", acceptTerms: false });
   const [askContact, setAskContact] = useState(false);
   /** Options de commande : plus tard (réservation) et pour un proche. */
   const [when, setWhen] = useState<"now" | "later">("now");
@@ -368,6 +369,7 @@ export function PassengerApp({ user }: { user: User | null }) {
 
   return (
     <AppShell name={user?.name} links={user?.isGuest ? GUEST_LINKS : LINKS} map={map}>
+      <TermsGate user={user} />
       <Sheet ref={sheet.ref}>
         {notice && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>}
         {error && (
@@ -600,6 +602,11 @@ export function PassengerApp({ user }: { user: User | null }) {
                     {config?.otpRequired && (
                       <OtpField phone={contact.phone} purpose="guest" value={contact.code} onChange={(code) => setContact((c) => ({ ...c, code }))} />
                     )}
+                    <TermsCheckbox
+                      required
+                      checked={contact.acceptTerms}
+                      onChange={(acceptTerms) => setContact((c) => ({ ...c, acceptTerms }))}
+                    />
                     <p className="text-xs text-muted">
                       Aucun compte nécessaire. Déjà inscrit ?{" "}
                       <Link href="/connexion" className="font-semibold text-brand">

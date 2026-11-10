@@ -175,6 +175,14 @@ export function AppMenu({ name, links, role }: { name: string; links: MenuLink[]
             )}
             <InstallButton className="w-full px-4 py-2.5 text-left text-sm font-semibold text-brand hover:bg-subtle" />
           </div>
+          <div className="border-t border-line py-1 text-xs text-muted">
+            <Link href="/conditions" className="block px-4 py-2 hover:bg-subtle" onClick={() => setOpen(false)}>
+              Conditions d&apos;utilisation
+            </Link>
+            <Link href="/confidentialite" className="block px-4 py-2 hover:bg-subtle" onClick={() => setOpen(false)}>
+              Politique de confidentialité
+            </Link>
+          </div>
           <button onClick={logout} className="block w-full border-t border-line px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50">
             Se déconnecter
           </button>

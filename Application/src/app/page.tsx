@@ -418,7 +418,17 @@ export default async function Home() {
 
       <ScrollReveal />
       <footer className="border-t border-line py-8 text-center text-sm text-muted">
-        © {new Date().getFullYear()} SURPLACE · {CITY_NAME}, Côte d&apos;Ivoire
+        <p>
+          © {new Date().getFullYear()} SURPLACE · {CITY_NAME}, Côte d&apos;Ivoire
+        </p>
+        <p className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+          <Link href="/conditions" className="hover:text-ink">
+            Conditions d&apos;utilisation
+          </Link>
+          <Link href="/confidentialite" className="hover:text-ink">
+            Politique de confidentialité
+          </Link>
+        </p>
       </footer>
     </main>
   );
