@@ -76,7 +76,7 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
     : "";
 
   return (
-    <div className={`relative ${fullScreen}`}>
+    <div className={`relative ${focused ? "search-open" : ""} ${fullScreen}`}>
       {focused && (
         <div className="mb-3 flex items-center justify-between md:hidden">
           <button

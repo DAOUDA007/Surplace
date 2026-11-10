@@ -260,6 +260,19 @@ body {
   animation: fade-up 0.4s var(--ease-out) both;
 }
 
+/* Recherche de lieu en plein écran (téléphone) : un parent animé avec transform deviendrait le cadre
+   de l'élément « fixed » et l'enfermerait dans le panneau du bas. On coupe donc ces animations
+   tant que la recherche est ouverte, et le panneau passe au-dessus du bandeau. */
+@media (max-width: 767px) {
+  :is(.sheet-in, .step-in, .stagger > *, .animate-fade-up, .animate-fade-in, .animate-pop):has(.search-open) {
+    animation: none;
+    transform: none;
+  }
+  .sheet-in:has(.search-open) {
+    z-index: 1300;
+  }
+}
+
 /* Apparition au défilement : voir le composant ScrollReveal. Sans JavaScript, tout reste visible. */
 html.reveal-ready [data-reveal] {
   opacity: 0;
