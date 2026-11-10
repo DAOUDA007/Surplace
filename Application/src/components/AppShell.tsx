@@ -34,7 +34,7 @@ export function AppShell({
           ) : (
             <Link
               href="/connexion"
-              className="flex h-11 items-center rounded-full bg-surface px-4 text-sm font-semibold shadow-md"
+              className="flex h-11 shrink-0 items-center whitespace-nowrap rounded-full bg-surface px-4 text-sm font-semibold shadow-md transition active:scale-95"
             >
               Se connecter
             </Link>

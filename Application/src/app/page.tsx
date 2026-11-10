@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ContactForm } from "@/components/ContactForm";
 import { CountUp } from "@/components/CountUp";
@@ -74,10 +75,24 @@ export default async function Home() {
   return (
     <main className="min-h-full">
       {/* --- Bandeau --- */}
-      <section className="relative overflow-hidden bg-night text-white">
+      <section className="relative isolate overflow-hidden bg-night text-white">
+        {/* Photo de fond : un passager SURPLACE à Korhogo. Le voile sombre garde le texte lisible :
+            uniforme sur téléphone, en dégradé sur grand écran pour laisser voir la photo à droite. */}
+        <Image
+          src="/hero.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="hero-photo -z-20 object-cover object-[50%_40%]"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 bg-gradient-to-b from-night/70 via-night/75 to-night md:bg-gradient-to-r md:from-night md:via-night/85 md:to-night/25"
+        />
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-5 py-5">
           <Logo light />
-          <nav className="flex items-center gap-1 text-sm font-semibold sm:gap-2">
+          <nav className="flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold sm:gap-2">
             <a href="#avis" className="hidden rounded-full px-3 py-2 hover:bg-white/10 md:block">
               Avis
             </a>
@@ -91,10 +106,18 @@ export default async function Home() {
               </Link>
             ) : (
               <>
-                <Link href="/connexion" className="rounded-full px-3 py-2 hover:bg-white/10">
+                {/* Sur téléphone, seul « Connexion » tient à côté du logo : l'inscription reste accessible
+                    par les boutons du bandeau (Commander, Devenir chauffeur) et depuis la page de connexion. */}
+                <Link
+                  href="/connexion"
+                  className="rounded-full bg-white/15 px-4 py-2 backdrop-blur transition hover:bg-white/25 sm:bg-transparent sm:px-3 sm:backdrop-blur-none sm:hover:bg-white/10"
+                >
                   Connexion
                 </Link>
-                <Link href="/inscription" className="rounded-full bg-brand px-4 py-2 hover:bg-brand-dark">
+                <Link
+                  href="/inscription"
+                  className="hidden rounded-full bg-brand px-4 py-2 transition hover:bg-brand-dark sm:inline-flex"
+                >
                   S&apos;inscrire
                 </Link>
               </>
@@ -105,7 +128,7 @@ export default async function Home() {
         {/* Halo orange qui respire derrière le bandeau. */}
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute -right-32 top-10 h-96 w-96 rounded-full bg-brand/25 blur-3xl"
+          className="animate-float pointer-events-none absolute -right-32 top-10 -z-10 h-96 w-96 rounded-full bg-brand/15 blur-3xl"
         />
         <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-20 pt-10 md:grid-cols-2 md:items-center md:pt-16">
           <div>

@@ -196,6 +196,16 @@ body {
     left: 100%;
   }
 }
+/* Photo du bandeau d'accueil : léger zoom lent, en aller-retour. */
+@keyframes slow-zoom {
+  to {
+    transform: scale(1.08);
+  }
+}
+.hero-photo {
+  animation: slow-zoom 22s ease-in-out infinite alternate;
+}
+
 @keyframes grow {
   from {
     transform: scaleY(0);
