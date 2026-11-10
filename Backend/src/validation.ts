@@ -1,4 +1,5 @@
 import { HttpError } from "./http";
+import { LICENSE_HINT, PLATE_HINT, normalizeLicense, normalizePlate } from "./vehicle";
 
 /** Normalise un numéro ivoirien (10 chiffres) ; accepte le préfixe +225 / 00225. */
 export function normalizePhone(input: unknown): string {
@@ -33,9 +34,16 @@ export function requiredText(input: unknown, label: string, max = 80): string {
 
 /** Numéro du permis de conduire d'un chauffeur (vérifié ensuite par l'équipe SURPLACE). */
 export function validateLicense(input: unknown): string {
-  const license = requiredText(input, "Numéro de permis de conduire", 30).toUpperCase();
-  if (license.length < 5) throw new HttpError(400, "Numéro de permis de conduire trop court.");
+  const license = normalizeLicense(requiredText(input, "Numéro de permis de conduire", 60));
+  if (!license) throw new HttpError(400, `Numéro de permis de conduire invalide. ${LICENSE_HINT}`);
   return license;
+}
+
+/** Plaque d'immatriculation ivoirienne (nouveau ou ancien modèle), remise au format officiel. */
+export function validatePlate(input: unknown): string {
+  const plate = normalizePlate(requiredText(input, "Immatriculation", 40));
+  if (!plate) throw new HttpError(400, `Immatriculation invalide. ${PLATE_HINT}`);
+  return plate;
 }
 
 export function parseId(input: string): number {

@@ -101,7 +101,7 @@ import {
   reviewSubscriptionRequest,
 } from "./subscriptions";
 import type { AdminPermission, Role, ServerEvent, User } from "./types";
-import { normalizePhone, optionalEmail, parseId, requiredText, validateLicense, validatePin } from "./validation";
+import { normalizePhone, optionalEmail, parseId, requiredText, validateLicense, validatePin, validatePlate } from "./validation";
 import { SITE_URL } from "./config";
 
 const GUEST_PROFILE_ERROR = "Créez d'abord votre compte (menu › Créer mon compte).";
@@ -227,7 +227,7 @@ api.post(
       if (role === "driver") {
         db.prepare("INSERT INTO drivers (user_id, plate, moto_model, license_number, referred_by) VALUES (?, ?, ?, ?, ?)").run(
           id,
-          requiredText(body.plate, "Immatriculation", 20).toUpperCase(),
+          validatePlate(body.plate),
           requiredText(body.motoModel, "Modèle de moto", 40),
           validateLicense(body.licenseNumber),
           referrer,

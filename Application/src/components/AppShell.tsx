@@ -23,7 +23,7 @@ export function AppShell({
   return (
     <div className="relative h-dvh w-full overflow-hidden">
       <div className="absolute inset-0 z-0">{map}</div>
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-2 p-3">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-[1100] flex items-start justify-between gap-2 p-3">
         <div className="pointer-events-auto rounded-full bg-surface px-3 py-1 shadow-md">
           <Logo />
         </div>

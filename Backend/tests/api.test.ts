@@ -189,7 +189,7 @@ describe("Courses", () => {
       name: "Ibrahim Soro",
       phone: "0755667788",
       pin: "2468",
-      plate: "AA 77 CI",
+      plate: "ab 123 cd",
       motoModel: "Apsonic",
       licenseNumber: "CI-555666",
       code,

@@ -8,6 +8,7 @@ import { TermsCheckbox } from "@/components/TermsGate";
 import { Button, ErrorMessage } from "@/components/ui";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { api } from "@/lib/api";
+import { LICENSE_HINT, PLATE_HINT, keepPlateChars, normalizeLicense, normalizePlate } from "@/lib/vehicle";
 
 const inputClass =
   "h-12 w-full rounded-2xl border border-line bg-surface px-4 text-[15px] outline-none transition focus:border-ink";
@@ -203,12 +204,20 @@ export function RegisterForm({
       {role === "driver" && (
         <div className="space-y-4 rounded-2xl bg-brand-soft p-4">
           <p className="text-sm font-semibold">Votre moto</p>
-          <Field label="Immatriculation">
+          <Field
+            label="Immatriculation"
+            hint={form.plate && !normalizePlate(form.plate) ? `Format non reconnu. ${PLATE_HINT}` : PLATE_HINT}
+          >
             <input
               required
+              maxLength={12}
+              autoCapitalize="characters"
+              autoComplete="off"
               value={form.plate}
-              onChange={(e) => set("plate")(e.target.value.toUpperCase())}
-              placeholder="Ex. AB 1234 CI"
+              onChange={(e) => set("plate")(keepPlateChars(e.target.value))}
+              onBlur={() => set("plate")(normalizePlate(form.plate) ?? form.plate)}
+              placeholder="Ex. AB-123-CD"
+              aria-invalid={!!form.plate && !normalizePlate(form.plate)}
               className={inputClass}
             />
           </Field>
@@ -221,13 +230,23 @@ export function RegisterForm({
               className={inputClass}
             />
           </Field>
-          <Field label="Numéro du permis de conduire" hint="Tel qu'il figure sur votre permis (catégorie A).">
+          <Field
+            label="Numéro du permis de conduire"
+            hint={
+              form.licenseNumber && !normalizeLicense(form.licenseNumber)
+                ? `Numéro non conforme. ${LICENSE_HINT}`
+                : "Tel qu'il figure sur votre permis (catégorie A)."
+            }
+          >
             <input
               required
               minLength={5}
               maxLength={30}
+              autoCapitalize="characters"
+              autoComplete="off"
               value={form.licenseNumber}
-              onChange={(e) => set("licenseNumber")(e.target.value.toUpperCase())}
+              onChange={(e) => set("licenseNumber")(e.target.value.toUpperCase().replace(/[^A-Z0-9 \-/]/g, ""))}
+              aria-invalid={!!form.licenseNumber && !normalizeLicense(form.licenseNumber)}
               placeholder="Ex. CI-123456789"
               className={inputClass}
             />

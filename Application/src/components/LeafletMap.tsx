@@ -81,11 +81,27 @@ function webglSupported() {
   }
 }
 
+/** Après un échec du fond vectoriel, on garde le fond classique jusqu'à la fermeture de l'onglet. */
+const RASTER_ONLY_KEY = "surplace-map-raster";
+
+function rasterOnly() {
+  try {
+    return sessionStorage.getItem(RASTER_ONLY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Fonctions internes du module maplibre-gl-leaflet utilisées pour le recaler sur la carte. */
+type VectorInternals = { _glMap?: unknown; _zooming?: boolean; _zoomEnd?: () => void };
+
 function BaseLayer() {
   const map = useMap();
   useEffect(() => {
     let layer: L.Layer | null = null;
     let attribution = "";
+    let stopped = false;
+    const timers: number[] = [];
     const show = (next: L.Layer, text: string) => {
       if (layer) map.removeLayer(layer);
       if (attribution) map.attributionControl.removeAttribution(attribution);
@@ -95,20 +111,64 @@ function BaseLayer() {
     };
     const raster = () => show(L.tileLayer(RASTER_URL, { maxZoom: 19 }), RASTER_ATTRIBUTION);
 
-    if (!webglSupported()) {
+    // La taille de la carte peut changer sans que Leaflet le sache (panneau du bas, clavier, rotation,
+    // carte affichée avant la fin de la mise en page après la connexion) : on la recalcule.
+    const observer = new ResizeObserver(() => map.invalidateSize({ pan: false }));
+    observer.observe(map.getContainer());
+
+    let resync: (() => void) | null = null;
+    if (!webglSupported() || rasterOnly()) {
       raster();
     } else {
       const vector = maplibreGL({ style: VECTOR_STYLE, attributionControl: false });
       show(vector, VECTOR_ATTRIBUTION);
-      // Style injoignable (réseau, panne du serveur) : fond classique.
       const gl = vector.getMaplibreMap();
+      const internals = vector as unknown as VectorInternals;
+
+      // Retour au fond classique : style injoignable, tuiles qui n'arrivent pas, carte graphique perdue.
       let loaded = false;
+      let tilesOk = 0;
+      let tileErrors = 0;
+      const fallback = () => {
+        if (stopped || layer !== vector) return;
+        try {
+          sessionStorage.setItem(RASTER_ONLY_KEY, "1");
+        } catch {
+          /* navigation privée : sans conséquence */
+        }
+        raster();
+      };
       gl.once("load", () => (loaded = true));
-      gl.on("error", () => {
-        if (!loaded && layer === vector) raster();
+      gl.on("data", (event) => {
+        const e = event as { dataType?: string; tile?: unknown };
+        if (e.dataType === "source" && e.tile) tilesOk++;
       });
+      gl.on("error", () => {
+        tileErrors++;
+        if (!loaded || (tilesOk === 0 && tileErrors >= 3)) fallback();
+      });
+      gl.getCanvas().addEventListener("webglcontextlost", fallback);
+      // Rien d'affiché au bout de 12 secondes (réseau très lent ou bloqué).
+      timers.push(window.setTimeout(() => {
+        if (!loaded || tilesOk === 0) fallback();
+      }, 12000));
+
+      // Le module suit la carte Leaflet avec un léger retard ; si un zoom est interrompu (geste, recentrage
+      // automatique), il peut rester bloqué et n'afficher plus que le fond beige. On le recale à chaque arrêt.
+      resync = () => {
+        window.requestAnimationFrame(() => {
+          if (stopped || layer !== vector || !internals._glMap) return;
+          gl.resize();
+          internals._zoomEnd?.call(vector);
+        });
+      };
+      map.on("moveend zoomend resize", resync);
     }
     return () => {
+      stopped = true;
+      timers.forEach((t) => window.clearTimeout(t));
+      observer.disconnect();
+      if (resync) map.off("moveend zoomend resize", resync);
       if (layer) map.removeLayer(layer);
       if (attribution) map.attributionControl.removeAttribution(attribution);
     };

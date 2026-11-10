@@ -7,6 +7,7 @@ import { Button, ErrorMessage } from "@/components/ui";
 import { usePublicConfig } from "@/hooks/usePublicConfig";
 import { api } from "@/lib/api";
 import type { DriverProfile, User } from "@/lib/types";
+import { LICENSE_HINT, PLATE_HINT, keepPlateChars, normalizeLicense, normalizePlate } from "@/lib/vehicle";
 
 const inputClass =
   "h-12 w-full rounded-2xl border border-line bg-surface px-4 text-[15px] outline-none transition focus:border-ink";
@@ -54,7 +55,12 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({
       ...f,
-      [k]: k === "plate" || k === "licenseNumber" ? e.target.value.toUpperCase() : e.target.value,
+      [k]:
+        k === "plate"
+          ? keepPlateChars(e.target.value)
+          : k === "licenseNumber"
+            ? e.target.value.toUpperCase().replace(/[^A-Z0-9 \-/]/g, "")
+            : e.target.value,
     }));
 
   const vehicleChanged =
@@ -105,15 +111,42 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
         </Field>
         {driver && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Immatriculation">
-              <input required value={form.plate} onChange={set("plate")} className={inputClass} />
+            <Field
+              label="Immatriculation"
+              hint={
+                form.plate !== driver.plate && !normalizePlate(form.plate) ? `Format non reconnu. ${PLATE_HINT}` : undefined
+              }
+            >
+              <input
+                required
+                maxLength={12}
+                autoCapitalize="characters"
+                autoComplete="off"
+                value={form.plate}
+                onChange={set("plate")}
+                onBlur={() => {
+                  const plate = normalizePlate(form.plate);
+                  if (plate) setForm((f) => ({ ...f, plate }));
+                }}
+                placeholder="Ex. AB-123-CD"
+                className={inputClass}
+              />
             </Field>
             <Field label="Marque et modèle">
               <input required value={form.motoModel} onChange={set("motoModel")} className={inputClass} />
             </Field>
-            <Field label="Numéro du permis de conduire">
+            <Field
+              label="Numéro du permis de conduire"
+              hint={
+                form.licenseNumber !== (driver.licenseNumber ?? "") && !normalizeLicense(form.licenseNumber)
+                  ? `Numéro non conforme. ${LICENSE_HINT}`
+                  : undefined
+              }
+            >
               <input
                 required
+                autoCapitalize="characters"
+                autoComplete="off"
                 minLength={5}
                 maxLength={30}
                 value={form.licenseNumber}

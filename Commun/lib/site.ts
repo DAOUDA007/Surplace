@@ -19,7 +19,7 @@ export const CONTACT = {
  */
 export const LEGAL = {
   /** Nom de l'entreprise ou de la personne qui exploite SURPLACE. */
-  publisher: "Koné Porinan Daouda",
+  publisher: "Academy Pro",
   /** Forme juridique et numéro d'immatriculation, ex. « SARL au capital de 1 000 000 FCFA, RCCM CI-KRG-2026-B-00000 ». */
   registration: "[Forme juridique et numéro RCCM]",
   /** Personne responsable du service et des données. */

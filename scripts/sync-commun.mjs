@@ -19,6 +19,7 @@ const TARGETS = {
   "lib/types.ts": ["Backend/src", "Application/src/lib", "Administration/src/lib"],
   "lib/pricing.ts": ["Backend/src", "Application/src/lib", "Administration/src/lib"],
   "lib/site.ts": ["Backend/src", "Application/src/lib", "Administration/src/lib"],
+  "lib/vehicle.ts": ["Backend/src", "Application/src/lib", "Administration/src/lib"],
   "lib/permissions.ts": ["Backend/src", "Administration/src/lib"],
   "lib/format.ts": ["Application/src/lib", "Administration/src/lib"],
   "lib/theme.ts": ["Application/src/lib", "Administration/src/lib"],

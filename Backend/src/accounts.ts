@@ -7,7 +7,7 @@ import { verifyOtp } from "./otp";
 import { hashPin, verifyPin } from "./password";
 import { isAdminRole } from "./permissions";
 import type { AdminRole, User } from "./types";
-import { normalizePhone, optionalEmail, requiredText, validateLicense, validatePin } from "./validation";
+import { normalizePhone, optionalEmail, requiredText, validateLicense, validatePin, validatePlate } from "./validation";
 
 const ACTIVE_RIDE_SQL = "status IN ('requested', 'accepted', 'arrived', 'in_progress')";
 
@@ -40,12 +40,17 @@ export function updateProfile(user: User, body: Record<string, unknown>) {
     ).run(name, phone, email, contactPhone ? contactName : null, contactPhone, user.id);
 
     if (user.role === "driver") {
-      const plate = requiredText(body.plate, "Immatriculation", 20).toUpperCase();
-      const motoModel = requiredText(body.motoModel, "Modèle de moto", 40);
-      const licenseNumber = validateLicense(body.licenseNumber);
       const current = db
         .prepare("SELECT plate, moto_model, license_number, status FROM drivers WHERE user_id = ?")
         .get(user.id) as { plate: string; moto_model: string; license_number: string | null; status: string };
+      // Le format officiel n'est vérifié que pour une valeur modifiée : un compte créé avant ce contrôle
+      // peut toujours enregistrer son profil sans retaper sa plaque ou son permis.
+      const rawPlate = String(body.plate ?? "").trim().toUpperCase();
+      const plate = rawPlate === current.plate ? current.plate : validatePlate(rawPlate);
+      const motoModel = requiredText(body.motoModel, "Modèle de moto", 40);
+      const rawLicense = String(body.licenseNumber ?? "").trim().toUpperCase();
+      const licenseNumber =
+        current.license_number && rawLicense === current.license_number ? current.license_number : validateLicense(rawLicense);
       const documentsChanged =
         current.plate !== plate || current.moto_model !== motoModel || current.license_number !== licenseNumber;
       if (documentsChanged) {
