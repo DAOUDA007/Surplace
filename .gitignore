@@ -13,3 +13,6 @@ Backend/data/sms/
 Backend/data/uploads/
 Backend/data/backups/
 Backend/data/vapid.json
+
+# Fichiers temporaires de Word (document ouvert)
+~$*
