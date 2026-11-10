@@ -24,22 +24,22 @@ import { enablePush, pushSupported } from "@/lib/push";
 import type { LatLng, Place, Ride, RideStatus, SavedPlace, TripEstimate, User } from "@/lib/types";
 
 const LINKS = [
-  { href: "/passager/historique", label: "🧾 Mes courses" },
-  { href: "/passager/profil", label: "👤 Mon profil" },
-  { href: "/notifications", label: "🔔 Notifications" },
+  { href: "/passager/historique", label: "Mes courses" },
+  { href: "/passager/profil", label: "Mon profil" },
+  { href: "/notifications", label: "Notifications" },
 ];
 
 /** Menu d'un passager invité : il n'a pas de profil, mais peut créer son compte. */
 const GUEST_LINKS = [
-  { href: "/passager/historique", label: "🧾 Mes courses" },
-  { href: "/inscription", label: "👤 Créer mon compte" },
-  { href: "/notifications", label: "🔔 Notifications" },
+  { href: "/passager/historique", label: "Mes courses" },
+  { href: "/inscription", label: "Créer mon compte" },
+  { href: "/notifications", label: "Notifications" },
 ];
 
 const inputClass =
   "h-12 w-full rounded-2xl border border-line bg-surface px-4 text-[15px] outline-none transition focus:border-ink";
 
-const KIND_ICONS: Record<SavedPlace["kind"], string> = { home: "🏠", work: "💼", other: "⭐" };
+const KIND_LABELS: Record<SavedPlace["kind"], string> = { home: "Maison", work: "Travail", other: "Favori" };
 
 /** Annonce vocale à chaque changement d'étape de la course. */
 const STATUS_ANNOUNCE: Partial<Record<RideStatus, AnnouncementKey>> = {
@@ -310,8 +310,8 @@ export function PassengerApp({ user }: { user: User | null }) {
 
   const shortcuts = useMemo(
     () => [
-      ...saved.map((s) => ({ place: s, icon: KIND_ICONS[s.kind] })),
-      ...recent.filter((r) => !saved.some((s) => s.label === r.label)).map((r) => ({ place: r, icon: "🕘" })),
+      ...saved.map((s) => ({ place: s, tag: KIND_LABELS[s.kind] })),
+      ...recent.filter((r) => !saved.some((s) => s.label === r.label)).map((r) => ({ place: r, tag: "Récent" })),
     ],
     [saved, recent],
   );
@@ -377,7 +377,7 @@ export function PassengerApp({ user }: { user: User | null }) {
         )}
         {showPushInvite && (
           <div className="mb-3 flex items-center gap-3 rounded-2xl bg-sky-50 p-3 text-sm text-sky-800">
-            <span className="flex-1">🔔 Être prévenu quand le chauffeur arrive, même téléphone en veille ?</span>
+            <span className="flex-1">Être prévenu quand le chauffeur arrive, même téléphone en veille ?</span>
             <button
               type="button"
               className="rounded-full bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white"
@@ -395,7 +395,7 @@ export function PassengerApp({ user }: { user: User | null }) {
         )}
 
         {!loaded ? (
-          <div className="h-40 animate-pulse rounded-2xl bg-subtle" />
+          <div className="skeleton h-40 rounded-2xl" />
         ) : ride ? (
           isFutureScheduled(ride) ? (
             <ScheduledRide ride={ride} busy={busy} onCancel={cancel} />
@@ -413,7 +413,7 @@ export function PassengerApp({ user }: { user: User | null }) {
             }}
           />
         ) : (
-          <div className="space-y-3">
+          <div className="step-in space-y-3">
             <h1 className="text-xl font-extrabold">
               Où allez-vous{user ? `, ${user.name.split(" ")[0]}` : ""} ?
             </h1>
@@ -428,7 +428,7 @@ export function PassengerApp({ user }: { user: User | null }) {
               placeholder="Point de départ"
               active={target === "pickup"}
               onActivate={() => setTarget("pickup")}
-              shortcuts={saved.map((s) => ({ place: s, icon: KIND_ICONS[s.kind] }))}
+              shortcuts={saved.map((s) => ({ place: s, tag: KIND_LABELS[s.kind] }))}
               action={
                 <button
                   type="button"
@@ -436,7 +436,7 @@ export function PassengerApp({ user }: { user: User | null }) {
                   className="shrink-0 rounded-full px-2 py-1 text-xs font-semibold text-brand hover:bg-brand-soft"
                   title="Utiliser ma position"
                 >
-                  {locating ? "Localisation…" : "◎ Ma position"}
+                  {locating ? "Localisation…" : "Ma position"}
                 </button>
               }
             />
@@ -450,15 +450,16 @@ export function PassengerApp({ user }: { user: User | null }) {
               shortcuts={shortcuts}
             />
             {!dropoff && shortcuts.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="stagger flex gap-2 overflow-x-auto pb-1">
                 {shortcuts.slice(0, 6).map((s) => (
                   <button
-                    key={`${s.icon}-${s.place.label}`}
+                    key={`${s.tag}-${s.place.label}`}
                     type="button"
                     onClick={() => setDropoff({ label: s.place.label, lat: s.place.lat, lng: s.place.lng })}
-                    className="max-w-48 shrink-0 truncate rounded-full bg-subtle px-3 py-1.5 text-xs font-semibold"
+                    className="max-w-48 shrink-0 truncate rounded-full bg-subtle px-3 py-1.5 text-xs font-semibold transition hover:bg-line active:scale-95"
                   >
-                    {s.icon} {s.place.label}
+                    <span className="font-normal text-muted">{s.tag} · </span>
+                    {s.place.label}
                   </button>
                 ))}
               </div>
@@ -468,7 +469,7 @@ export function PassengerApp({ user }: { user: User | null }) {
                 <span className="text-muted">Enregistrer cette destination :</span>
                 {(["home", "work", "other"] as const).map((k) => (
                   <button key={k} type="button" onClick={() => savePlace(k)} className="rounded-full bg-subtle px-2.5 py-1 font-semibold">
-                    {KIND_ICONS[k]} {k === "home" ? "Maison" : k === "work" ? "Travail" : "Favori"}
+                    {KIND_LABELS[k]}
                   </button>
                 ))}
               </div>
@@ -480,9 +481,8 @@ export function PassengerApp({ user }: { user: User | null }) {
             </p>
 
             {pickup && dropoff && (estimate || estimating) && (
-              <div className="space-y-3 pt-1">
+              <div className="step-in space-y-3 pt-1">
                 <div className="flex items-center gap-4 rounded-2xl border-2 border-ink p-4">
-                  <span className="text-3xl">🏍️</span>
                   <div className="flex-1">
                     <p className="font-bold">Moto SURPLACE</p>
                     {estimate ? (
@@ -497,7 +497,9 @@ export function PassengerApp({ user }: { user: User | null }) {
                       <p className="text-xs font-semibold text-amber-800">{estimate.surchargeLabels.join(" · ")}</p>
                     )}
                   </div>
-                  <p className="text-lg font-extrabold">{estimate ? formatFcfa(estimate.price) : "…"}</p>
+                  <p key={estimate?.price ?? "calcul"} className="animate-pop text-lg font-extrabold">
+                    {estimate ? formatFcfa(estimate.price) : "…"}
+                  </p>
                 </div>
 
                 {/* Options : quand, pour qui */}
@@ -508,9 +510,9 @@ export function PassengerApp({ user }: { user: User | null }) {
                         key={w}
                         type="button"
                         onClick={() => setWhen(w)}
-                        className={`h-9 rounded-xl ${when === w ? "bg-surface shadow-sm" : "text-muted"}`}
+                        className={`h-9 rounded-xl transition ${when === w ? "bg-surface shadow-sm" : "text-muted"}`}
                       >
-                        {w === "now" ? "Maintenant" : "🕒 Plus tard"}
+                        {w === "now" ? "Maintenant" : "Plus tard"}
                       </button>
                     ))}
                   </div>
@@ -520,15 +522,15 @@ export function PassengerApp({ user }: { user: User | null }) {
                         key={String(o)}
                         type="button"
                         onClick={() => setForOther(o)}
-                        className={`h-9 rounded-xl ${forOther === o ? "bg-surface shadow-sm" : "text-muted"}`}
+                        className={`h-9 rounded-xl transition ${forOther === o ? "bg-surface shadow-sm" : "text-muted"}`}
                       >
-                        {o ? "👤 Un proche" : "Pour moi"}
+                        {o ? "Un proche" : "Pour moi"}
                       </button>
                     ))}
                   </div>
                 </div>
                 {when === "later" && (
-                  <label className="block rounded-2xl bg-subtle p-3">
+                  <label className="animate-fade-up block rounded-2xl bg-subtle p-3">
                     <span className="mb-1 block text-xs font-semibold">Jour et heure de prise en charge</span>
                     <input
                       type="datetime-local"
@@ -544,7 +546,7 @@ export function PassengerApp({ user }: { user: User | null }) {
                   </label>
                 )}
                 {forOther && (
-                  <div className="space-y-2 rounded-2xl bg-subtle p-3">
+                  <div className="animate-fade-up space-y-2 rounded-2xl bg-subtle p-3">
                     <p className="text-xs font-semibold">Personne transportée (le chauffeur l&apos;appellera)</p>
                     <input
                       value={rider.name}
@@ -564,7 +566,7 @@ export function PassengerApp({ user }: { user: User | null }) {
                 )}
 
                 <div className="flex items-center justify-between rounded-2xl bg-subtle px-4 py-3 text-sm">
-                  <span className="font-medium">💵 Paiement</span>
+                  <span className="font-medium">Paiement</span>
                   <span className="font-semibold">Espèces</span>
                 </div>
                 {guestForm && (
@@ -643,10 +645,9 @@ function useElapsed(since: string) {
 function Searching({ ride }: { ride: Ride }) {
   const elapsed = useElapsed(ride.scheduledAt && new Date(ride.scheduledAt) > new Date(ride.requestedAt) ? ride.scheduledAt : ride.requestedAt);
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative grid h-14 w-14 place-items-center">
-        <span className="absolute inset-0 animate-ping rounded-full bg-brand/30" />
-        <span className="relative grid h-12 w-12 place-items-center rounded-full bg-brand text-2xl">🏍️</span>
+    <div className="flex items-center gap-5">
+      <div className="radar h-12 w-12 shrink-0">
+        <span className="relative z-10 h-4 w-4 rounded-full border-[3px] border-white bg-brand shadow" />
       </div>
       <div>
         <p className="text-lg font-extrabold">Recherche d&apos;un chauffeur…</p>
@@ -660,7 +661,7 @@ function RiderLine({ ride }: { ride: Ride }) {
   if (!ride.riderName) return null;
   return (
     <p className="rounded-xl bg-subtle px-3 py-2 text-sm">
-      👤 Pour <strong>{ride.riderName}</strong>
+      Pour <strong>{ride.riderName}</strong>
       {ride.riderPhone ? ` · ${formatPhone(ride.riderPhone)}` : ""}
     </p>
   );
@@ -670,9 +671,9 @@ function RiderLine({ ride }: { ride: Ride }) {
 function ScheduledRide({ ride, busy, onCancel }: { ride: Ride; busy: boolean; onCancel: () => void }) {
   const date = new Date(ride.scheduledAt!);
   return (
-    <div className="space-y-4">
+    <div className="step-in space-y-4">
       <div>
-        <p className="text-sm font-semibold text-brand">🕒 Course réservée</p>
+        <p className="text-sm font-semibold text-brand">Course réservée</p>
         <p className="text-xl font-extrabold">
           {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} à{" "}
           {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
@@ -682,7 +683,7 @@ function ScheduledRide({ ride, busy, onCancel }: { ride: Ride; busy: boolean; on
       <RiderLine ride={ride} />
       <Route from={ride.pickup.label} to={ride.dropoff.label} />
       <div className="flex items-center justify-between rounded-2xl bg-brand-soft px-4 py-3">
-        <span className="text-sm font-medium">💵 À payer en espèces</span>
+        <span className="text-sm font-medium">À payer en espèces</span>
         <span className="text-lg font-extrabold">{formatFcfa(ride.price)}</span>
       </div>
       <Button variant="danger" onClick={onCancel} loading={busy} className="w-full">
@@ -721,14 +722,14 @@ function ActiveRide({
       {ride.status === "requested" ? (
         <Searching ride={ride} />
       ) : (
-        <div>
+        <div key={ride.status} className="step-in">
           <p className="text-lg font-extrabold">{headline}</p>
           {ride.status === "arrived" && <p className="text-sm text-muted">Rejoignez-le au point de départ.</p>}
         </div>
       )}
 
       {driver && (
-        <div className="flex items-center gap-3 rounded-2xl bg-subtle p-3">
+        <div className="animate-pop flex items-center gap-3 rounded-2xl bg-subtle p-3">
           <DriverPhoto src={driver.hasPhoto ? `/api/drivers/${driver.id}/photo` : null} name={driver.name} />
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold">{driver.name}</p>
@@ -739,10 +740,10 @@ function ActiveRide({
           </div>
           <a
             href={`tel:${driver.phone}`}
-            className="grid h-11 w-11 place-items-center rounded-full bg-green-600 text-lg text-white"
+            className="shrink-0 rounded-full bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
             title={`Appeler ${formatPhone(driver.phone)}`}
           >
-            📞
+            Appeler
           </a>
         </div>
       )}
@@ -758,7 +759,7 @@ function ActiveRide({
       <Route from={ride.pickup.label} to={ride.dropoff.label} />
 
       <div className="flex items-center justify-between rounded-2xl bg-brand-soft px-4 py-3">
-        <span className="text-sm font-medium">💵 À payer en espèces</span>
+        <span className="text-sm font-medium">À payer en espèces</span>
         <span className="text-lg font-extrabold">{formatFcfa(ride.price)}</span>
       </div>
 
@@ -790,8 +791,7 @@ function RateRide({ ride, onDone }: { ride: Ride; onDone: () => void }) {
   }
 
   return (
-    <div className="space-y-4 text-center">
-      <p className="text-4xl">🎉</p>
+    <div className="step-in space-y-4 text-center">
       <div>
         <p className="text-xl font-extrabold">Vous êtes arrivé !</p>
         <p className="text-sm text-muted">
@@ -806,7 +806,7 @@ function RateRide({ ride, onDone }: { ride: Ride; onDone: () => void }) {
             <button
               key={n}
               onClick={() => setRating(n)}
-              className={`text-4xl transition ${n <= rating ? "text-amber-400" : "text-line"}`}
+              className={`text-4xl transition duration-200 hover:scale-110 active:scale-90 ${n <= rating ? "scale-110 text-amber-400" : "text-line"}`}
               aria-label={`${n} étoile${n > 1 ? "s" : ""}`}
             >
               ★
@@ -820,7 +820,7 @@ function RateRide({ ride, onDone }: { ride: Ride; onDone: () => void }) {
           onChange={(e) => setComment(e.target.value)}
           placeholder="Un commentaire ? (facultatif)"
           rows={2}
-          className="w-full rounded-2xl border border-line p-3 text-sm outline-none focus:border-ink"
+          className="animate-fade-up w-full rounded-2xl border border-line p-3 text-sm outline-none focus:border-ink"
         />
       )}
       <ErrorMessage>{error}</ErrorMessage>

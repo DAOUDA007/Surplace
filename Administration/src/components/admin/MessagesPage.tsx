@@ -44,7 +44,6 @@ export function MessagesPage() {
         </div>
         {messages.length === 0 ? (
           <EmptyState
-            icon="📭"
             title={filter === "todo" ? "Aucun message à traiter" : "Aucun message"}
             text={filter === "todo" ? "Bravo, la boîte de réception est vide." : undefined}
           />
@@ -77,7 +76,7 @@ export function MessagesPage() {
                       disabled={action.busy === `m-${m.id}`}
                       onClick={() => action.run(`m-${m.id}`, `/api/admin/messages/${m.id}`, { handled: !m.handled })}
                     >
-                      {m.handled ? "Remettre à traiter" : "✓ Marquer comme traité"}
+                      {m.handled ? "Remettre à traiter" : "Marquer comme traité"}
                     </ActionButton>
                     <ActionButton
                       tone="danger"

@@ -149,7 +149,7 @@ export function AdminsPage({ user }: { user: User }) {
                     </td>
                     <td className={td}>
                       {a.isPrincipal ? (
-                        <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-white">👑 Principal (accès complet)</span>
+                        <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-bold text-white">Principal (accès complet)</span>
                       ) : principal ? (
                         <select
                           value={a.adminRole}

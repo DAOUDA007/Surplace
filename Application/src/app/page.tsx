@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { ContactForm } from "@/components/ContactForm";
+import { CountUp } from "@/components/CountUp";
 import { Logo } from "@/components/Logo";
+import { ScrollReveal } from "@/components/ScrollReveal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CITY_NAME, POPULAR_PLACES } from "@/lib/places";
 import { DEFAULT_SETTINGS, estimateTrip, formatFcfa, SUBSCRIPTION_PLANS } from "@/lib/pricing";
 import { backendGet, getSession, homeFor } from "@/lib/server";
 import { CONTACT } from "@/lib/site";
-import type { AppSettings, PublicReviews } from "@/lib/types";
+import type { AppSettings, PublicReviews, SubscriptionPlanId } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,8 @@ const STEPS = [
   { title: "Un chauffeur arrive", text: "Suivez votre moto en temps réel jusqu'à votre position." },
   { title: "Payez en espèces", text: "Réglez le montant affiché directement au chauffeur." },
 ];
+
+const PLAN_IDS = Object.keys(SUBSCRIPTION_PLANS) as SubscriptionPlanId[];
 
 /** Les étapes sont répétées 3 fois pour que le défilement en boucle ne laisse jamais de vide. */
 const MARQUEE_STEPS = [...STEPS, ...STEPS, ...STEPS];
@@ -61,6 +65,11 @@ export default async function Home() {
   const EXAMPLE = estimateTrip(EXAMPLE_FROM, EXAMPLE_TO, pricing);
   // Commander ne demande pas de compte : un visiteur va directement à l'écran de commande.
   const appHref = user ? homeFor(user.role) : "/passager";
+  // Boutons des formules : le lien d'encaissement réglé dans l'administration, sinon l'inscription chauffeur
+  // (ou l'espace chauffeur, où la demande d'abonnement se fait en un clic).
+  const driverHref = user?.role === "driver" ? "/chauffeur?abonnement=1" : user ? appHref : "/inscription?role=driver";
+  const paymentLinks = settings.paymentLinks;
+  const anyPaymentLink = PLAN_IDS.some((id) => paymentLinks[id]);
 
   return (
     <main className="min-h-full">
@@ -93,38 +102,51 @@ export default async function Home() {
           </nav>
         </div>
 
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 pb-20 pt-10 md:grid-cols-2 md:items-center md:pt-16">
+        {/* Halo orange qui respire derrière le bandeau. */}
+        <div
+          aria-hidden
+          className="animate-float pointer-events-none absolute -right-32 top-10 h-96 w-96 rounded-full bg-brand/25 blur-3xl"
+        />
+        <div className="relative mx-auto grid max-w-6xl gap-10 px-5 pb-20 pt-10 md:grid-cols-2 md:items-center md:pt-16">
           <div>
-            <p className="mb-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-orange-200">
-              🇨🇮 Disponible à {CITY_NAME}
+            <p className="animate-fade-up mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-orange-200">
+              <span className="live-dot text-emerald-400" />
+              Disponible à {CITY_NAME}
             </p>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight md:text-6xl">
-              Votre taxi-moto,
-              <br />
-              <span className="text-brand">sur place</span> en quelques minutes.
+              <span className="animate-fade-up block" style={{ "--d": 1 } as React.CSSProperties}>
+                Votre taxi-moto,
+              </span>
+              <span className="animate-fade-up block" style={{ "--d": 2 } as React.CSSProperties}>
+                <span className="text-brand">sur place</span> en quelques minutes.
+              </span>
             </h1>
-            <p className="mt-5 max-w-md text-lg text-stone-300">
+            <p className="animate-fade-up mt-5 max-w-md text-lg text-stone-300" style={{ "--d": 3 } as React.CSSProperties}>
               Commandez une moto en deux clics, connaissez le prix à l&apos;avance et suivez votre chauffeur en
               direct dans tout {CITY_NAME}.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="animate-fade-up mt-8 flex flex-wrap gap-3" style={{ "--d": 4 } as React.CSSProperties}>
               <Link
                 href={appHref}
-                className="rounded-2xl bg-brand px-6 py-4 text-lg font-bold shadow-lg shadow-orange-900/30 hover:bg-brand-dark"
+                className="rounded-2xl bg-brand px-6 py-4 text-lg font-bold shadow-lg shadow-orange-900/30 transition hover:-translate-y-0.5 hover:bg-brand-dark active:scale-[0.97]"
               >
                 Commander une moto
               </Link>
               {!user && (
                 <Link
                   href="/inscription?role=driver"
-                  className="rounded-2xl bg-white/10 px-6 py-4 text-lg font-bold hover:bg-white/20"
+                  className="rounded-2xl bg-white/10 px-6 py-4 text-lg font-bold transition hover:-translate-y-0.5 hover:bg-white/20 active:scale-[0.97]"
                 >
                   Devenir chauffeur
                 </Link>
               )}
             </div>
             {reviews?.average != null && (
-              <a href="#avis" className="mt-6 inline-flex items-center gap-2 text-sm text-stone-300 hover:text-white">
+              <a
+                href="#avis"
+                className="animate-fade-up mt-6 inline-flex items-center gap-2 text-sm text-stone-300 hover:text-white"
+                style={{ "--d": 5 } as React.CSSProperties}
+              >
                 <StarRow value={reviews.average} />
                 <span>
                   <strong className="text-white">{reviews.average.toLocaleString("fr-FR")}/5</strong> ·{" "}
@@ -134,21 +156,33 @@ export default async function Home() {
             )}
           </div>
 
-          <div className="relative mx-auto w-full max-w-sm">
-            <div className="rounded-[2rem] bg-surface p-5 text-ink shadow-2xl">
+          <div className="animate-fade-up relative mx-auto w-full max-w-sm" style={{ "--d": 3 } as React.CSSProperties}>
+            <div className="animate-float rounded-[2rem] bg-surface p-5 text-ink shadow-2xl">
               <p className="text-sm font-semibold text-muted">Exemple de course</p>
               <div className="mt-3 space-y-2 text-sm font-medium">
-                <p>🟢 {EXAMPLE_FROM.label}</p>
-                <p>🟥 {EXAMPLE_TO.label}</p>
+                <p className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-600" />
+                  {EXAMPLE_FROM.label}
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-red-600" />
+                  {EXAMPLE_TO.label}
+                </p>
               </div>
-              <div className="mt-4 flex items-end justify-between rounded-2xl bg-brand-soft p-4">
-                <div>
-                  <p className="text-xs text-muted">
-                    {EXAMPLE.distanceKm.toLocaleString("fr-FR")} km · ~{EXAMPLE.durationMin} min
-                  </p>
-                  <p className="text-2xl font-extrabold">{formatFcfa(EXAMPLE.price)}</p>
-                </div>
-                <span className="text-4xl">🏍️</span>
+              {/* Trajet : la moto (point orange) part du départ et rejoint la destination, en boucle. */}
+              <div className="relative mx-1 mt-5 h-1 rounded-full bg-line" aria-hidden>
+                <span className="absolute -top-[3px] left-0 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-green-600" />
+                <span className="absolute -top-[3px] right-0 h-2.5 w-2.5 translate-x-1/2 rounded-sm bg-red-600" />
+                <span
+                  className="absolute -top-[5px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-white bg-brand shadow"
+                  style={{ animation: "travel 4.5s ease-in-out infinite" }}
+                />
+              </div>
+              <div className="mt-5 rounded-2xl bg-brand-soft p-4">
+                <p className="text-xs text-muted">
+                  {EXAMPLE.distanceKm.toLocaleString("fr-FR")} km · ~{EXAMPLE.durationMin} min
+                </p>
+                <p className="text-2xl font-extrabold">{formatFcfa(EXAMPLE.price)}</p>
               </div>
               <p className="mt-3 text-center text-xs text-muted">Paiement en espèces au chauffeur</p>
             </div>
@@ -158,13 +192,15 @@ export default async function Home() {
 
       {/* --- Comment ça marche --- */}
       <section className="py-16">
-        <h2 className="mx-auto max-w-6xl px-5 text-3xl font-extrabold tracking-tight">Comment ça marche</h2>
+        <h2 data-reveal className="mx-auto max-w-6xl px-5 text-3xl font-extrabold tracking-tight">
+          Comment ça marche
+        </h2>
         {/* Défilement continu (pause au survol) ; voir .marquee dans globals.css. */}
         <div className="marquee mt-8 py-2">
           <div className="marquee-track">
             {MARQUEE_STEPS.map((s, i) => (
               <div key={i} aria-hidden={i >= STEPS.length} className="w-72 shrink-0 pr-4">
-                <div className="h-full rounded-3xl bg-surface p-6 shadow-sm ring-1 ring-line">
+                <div className="h-full rounded-3xl bg-surface p-6 shadow-sm ring-1 ring-line transition hover:ring-brand">
                   <span className="text-sm font-bold text-brand">0{(i % STEPS.length) + 1}</span>
                   <h3 className="mt-3 font-bold">{s.title}</h3>
                   <p className="mt-1 text-sm text-muted">{s.text}</p>
@@ -177,10 +213,10 @@ export default async function Home() {
 
       {/* --- Tarifs et chauffeurs --- */}
       <section className="mx-auto grid max-w-6xl gap-4 px-5 pb-16 md:grid-cols-2">
-        <div className="rounded-3xl bg-brand p-8 text-white">
+        <div data-reveal className="rounded-3xl bg-brand p-8 text-white">
           <h2 className="text-2xl font-extrabold">Un prix simple</h2>
           <p className="mt-4 text-5xl font-extrabold">
-            {pricing.perKm} F<span className="text-2xl font-bold text-orange-100"> / km</span>
+            <CountUp value={pricing.perKm} /> F<span className="text-2xl font-bold text-orange-100"> / km</span>
           </p>
           <ul className="mt-4 space-y-1 text-orange-50">
             <li>Course minimum : {formatFcfa(pricing.minimumFare)}</li>
@@ -188,7 +224,12 @@ export default async function Home() {
             <li>Paiement en espèces au chauffeur</li>
           </ul>
         </div>
-        <div className="rounded-3xl bg-surface p-8 shadow-sm ring-1 ring-line">
+        <div
+          id="abonnements"
+          data-reveal
+          className="scroll-mt-6 rounded-3xl bg-surface p-8 shadow-sm ring-1 ring-line"
+          style={{ "--d": 1 } as React.CSSProperties}
+        >
           <h2 className="text-2xl font-extrabold">Vous avez une moto ?</h2>
           <p className="mt-3 text-muted">
             Rejoignez SURPLACE à {CITY_NAME}, recevez des courses près de vous et gardez{" "}
@@ -196,48 +237,78 @@ export default async function Home() {
             abonnement.
           </p>
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-subtle p-4">
-              <p className="text-sm text-muted">{SUBSCRIPTION_PLANS.monthly.label}</p>
-              <p className="text-xl font-extrabold">{formatFcfa(plans.monthly)}</p>
-              <p className="text-xs text-muted">par mois</p>
-            </div>
-            <div className="relative rounded-2xl bg-brand-soft p-4 ring-2 ring-brand">
-              {plans.monthly > 0 && plans.monthly * 12 > plans.yearly && (
-                <span className="absolute -top-2.5 right-3 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">
-                  {Math.round((plans.monthly * 12 - plans.yearly) / plans.monthly)} mois offerts
-                </span>
-              )}
-              <p className="text-sm text-muted">{SUBSCRIPTION_PLANS.yearly.label}</p>
-              <p className="text-xl font-extrabold">{formatFcfa(plans.yearly)}</p>
-              <p className="text-xs text-muted">par an</p>
-            </div>
+            {PLAN_IDS.map((id) => {
+              const yearly = id === "yearly";
+              const link = paymentLinks[id];
+              const freeMonths =
+                yearly && plans.monthly > 0 && plans.monthly * 12 > plans.yearly
+                  ? Math.round((plans.monthly * 12 - plans.yearly) / plans.monthly)
+                  : 0;
+              return (
+                <a
+                  key={id}
+                  href={link || driverHref}
+                  target={link ? "_blank" : undefined}
+                  rel={link ? "noreferrer" : undefined}
+                  className={`lift group relative flex flex-col rounded-2xl p-4 active:scale-[0.98] ${
+                    yearly ? "bg-brand-soft ring-2 ring-brand" : "bg-subtle ring-1 ring-transparent hover:ring-line"
+                  }`}
+                >
+                  {freeMonths > 0 && (
+                    <span className="absolute -top-2.5 right-3 rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">
+                      {freeMonths} mois offerts
+                    </span>
+                  )}
+                  <span className="text-sm text-muted">{SUBSCRIPTION_PLANS[id].label}</span>
+                  <span className="text-xl font-extrabold">{formatFcfa(plans[id])}</span>
+                  <span className="text-xs text-muted">{yearly ? "par an" : "par mois"}</span>
+                  <span
+                    className={`mt-3 rounded-xl px-3 py-2 text-center text-sm font-bold transition ${
+                      yearly ? "bg-brand text-white group-hover:bg-brand-dark" : "bg-contrast text-on-contrast group-hover:opacity-90"
+                    }`}
+                  >
+                    {link ? "Payer" : "Choisir"}
+                  </span>
+                </a>
+              );
+            })}
           </div>
-          <Link
-            href={user ? appHref : "/inscription?role=driver"}
-            className="mt-6 inline-flex rounded-2xl bg-contrast px-5 py-3 font-bold text-on-contrast hover:opacity-90"
-          >
-            Devenir chauffeur
-          </Link>
+          <p className="mt-4 text-xs text-muted">
+            {anyPaymentLink
+              ? "Après le paiement, inscrivez-vous comme chauffeur avec le même numéro (ou demandez la formule dans votre espace chauffeur) : l'équipe active votre abonnement dès qu'elle a reçu le paiement."
+              : "Inscrivez-vous, puis choisissez votre formule dans votre espace chauffeur. Votre abonnement est activé dès que l'équipe a reçu votre paiement."}
+          </p>
+          {!user && (
+            <Link
+              href="/inscription?role=driver"
+              className="mt-5 inline-flex rounded-2xl bg-contrast px-5 py-3 font-bold text-on-contrast transition hover:opacity-90 active:scale-[0.97]"
+            >
+              Devenir chauffeur
+            </Link>
+          )}
         </div>
       </section>
 
       {/* --- Avis et notes --- */}
       <section id="avis" className="scroll-mt-6 border-y border-line bg-surface">
         <div className="mx-auto max-w-6xl px-5 py-16">
-          <h2 className="text-3xl font-extrabold tracking-tight">Ils roulent avec SURPLACE</h2>
-          <p className="mt-2 text-muted">Les notes et commentaires laissés par nos passagers après leurs courses.</p>
+          <h2 data-reveal className="text-3xl font-extrabold tracking-tight">
+            Ils roulent avec SURPLACE
+          </h2>
+          <p data-reveal className="mt-2 text-muted">
+            Les notes et commentaires laissés par nos passagers après leurs courses.
+          </p>
 
           {!reviews || reviews.count === 0 ? (
-            <div className="mt-8 rounded-3xl bg-subtle p-8 text-center">
-              <p className="text-4xl">⭐</p>
-              <p className="mt-2 font-bold">Pas encore d&apos;avis</p>
+            <div data-reveal className="mt-8 rounded-3xl bg-subtle p-8 text-center">
+              <p className="font-bold">Pas encore d&apos;avis</p>
               <p className="text-sm text-muted">
                 Après chaque course, les passagers peuvent noter leur chauffeur. Les avis apparaîtront ici.
               </p>
             </div>
           ) : (
             <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr]">
-              <div className="rounded-3xl bg-subtle p-6">
+              <div data-reveal className="rounded-3xl bg-subtle p-6">
                 <p className="text-5xl font-extrabold">
                   {reviews.average!.toLocaleString("fr-FR")}
                   <span className="text-xl font-bold text-muted"> / 5</span>
@@ -253,7 +324,11 @@ export default async function Home() {
                       <div key={n} className="flex items-center gap-2 text-sm">
                         <span className="w-6 text-muted">{n}★</span>
                         <span className="h-2 flex-1 overflow-hidden rounded-full bg-line">
-                          <span className="block h-full rounded-full bg-amber-400" style={{ width: `${share}%` }} />
+                          <span
+                            data-reveal
+                            className="block h-full origin-left rounded-full bg-amber-400"
+                            style={{ width: `${share}%` }}
+                          />
                         </span>
                         <span className="w-8 text-right text-muted">{reviews.distribution[n]}</span>
                       </div>
@@ -266,8 +341,13 @@ export default async function Home() {
                 <p className="self-center text-muted">Aucun commentaire écrit pour le moment.</p>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {reviews.reviews.map((r) => (
-                    <figure key={r.id} className="flex flex-col rounded-3xl bg-canvas p-5 ring-1 ring-line">
+                  {reviews.reviews.map((r, i) => (
+                    <figure
+                      key={r.id}
+                      data-reveal
+                      className="lift flex flex-col rounded-3xl bg-canvas p-5 ring-1 ring-line"
+                      style={{ "--d": i % 4 } as React.CSSProperties}
+                    >
                       <StarRow value={r.rating} />
                       <blockquote className="mt-3 flex-1 text-[15px]">« {r.comment} »</blockquote>
                       <figcaption className="mt-4 flex items-center gap-3 text-sm">
@@ -292,41 +372,41 @@ export default async function Home() {
 
       {/* --- Contact --- */}
       <section id="contact" className="mx-auto max-w-6xl scroll-mt-6 px-5 py-16">
-        <h2 className="text-3xl font-extrabold tracking-tight">Nous contacter</h2>
-        <p className="mt-2 text-muted">Une question, une réclamation ou envie de devenir chauffeur ? Écrivez-nous.</p>
+        <h2 data-reveal className="text-3xl font-extrabold tracking-tight">
+          Nous contacter
+        </h2>
+        <p data-reveal className="mt-2 text-muted">Une question, une réclamation ou envie de devenir chauffeur ? Écrivez-nous.</p>
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
           <div className="space-y-3">
             {[
-              { icon: "📞", label: "Téléphone", value: CONTACT.phone, href: `tel:${CONTACT.phone.replace(/\s/g, "")}` },
-              { icon: "💬", label: "WhatsApp", value: CONTACT.phone, href: `https://wa.me/${CONTACT.whatsapp}` },
-              { icon: "✉️", label: "E-mail", value: CONTACT.email, href: `mailto:${CONTACT.email}` },
-              { icon: "📍", label: "Adresse", value: CONTACT.address },
-              { icon: "🕐", label: "Horaires", value: CONTACT.hours },
-            ].map((c) => {
+              { label: "Téléphone", value: CONTACT.phone, href: `tel:${CONTACT.phone.replace(/\s/g, "")}` },
+              { label: "WhatsApp", value: CONTACT.phone, href: `https://wa.me/${CONTACT.whatsapp}` },
+              { label: "E-mail", value: CONTACT.email, href: `mailto:${CONTACT.email}` },
+              { label: "Adresse", value: CONTACT.address },
+              { label: "Horaires", value: CONTACT.hours },
+            ].map((c, i) => {
               const content = (
-                <>
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-soft text-xl">
-                    {c.icon}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-xs text-muted">{c.label}</span>
-                    <span className="block truncate font-semibold">{c.value}</span>
-                  </span>
-                </>
+                <span className="min-w-0 border-l-2 border-brand pl-4">
+                  <span className="block text-xs text-muted">{c.label}</span>
+                  <span className="block truncate font-semibold">{c.value}</span>
+                </span>
               );
-              const cls = "flex items-center gap-4 rounded-3xl bg-surface p-4 shadow-sm ring-1 ring-line";
+              const cls = "flex items-center rounded-3xl bg-surface p-4 shadow-sm ring-1 ring-line";
+              const style = { "--d": i } as React.CSSProperties;
               return c.href ? (
                 <a
                   key={c.label}
                   href={c.href}
                   target={c.href.startsWith("http") ? "_blank" : undefined}
                   rel="noreferrer"
-                  className={`${cls} transition hover:ring-brand`}
+                  data-reveal
+                  style={style}
+                  className={`${cls} lift hover:ring-brand`}
                 >
                   {content}
                 </a>
               ) : (
-                <div key={c.label} className={cls}>
+                <div key={c.label} data-reveal style={style} className={cls}>
                   {content}
                 </div>
               );
@@ -336,6 +416,7 @@ export default async function Home() {
         </div>
       </section>
 
+      <ScrollReveal />
       <footer className="border-t border-line py-8 text-center text-sm text-muted">
         © {new Date().getFullYear()} SURPLACE · {CITY_NAME}, Côte d&apos;Ivoire
       </footer>

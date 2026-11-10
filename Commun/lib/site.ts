@@ -1,6 +1,6 @@
 /**
  * Coordonnées de SURPLACE : affichées sur la page d'accueil, dans les e-mails et sur l'écran d'urgence.
- * ⚠️ Vérifiez-les avant la mise en service.
+ * Vérifiez-les avant la mise en service.
  */
 export const CONTACT = {
   phone: "+225 05 74 32 88 18",
@@ -9,11 +9,11 @@ export const CONTACT = {
   email: "academypro61@gmail.com",
   address: "Cité Ali Kader, Korhogo, Côte d'Ivoire",
   hours: "Tous les jours, de 8 h à 20 h",
-  /** Ligne d'urgence SURPLACE, appelée depuis le bouton 🆘 pendant une course. */
+  /** Ligne d'urgence SURPLACE, appelée depuis le bouton Urgence pendant une course. */
   emergencyPhone: "+225 05 74 32 88 18",
 };
 
-/** Numéros d'urgence publics en Côte d'Ivoire, proposés par le bouton 🆘. */
+/** Numéros d'urgence publics en Côte d'Ivoire, proposés par le bouton Urgence. */
 export const EMERGENCY_NUMBERS = [
   { label: "Police secours", phone: "110" },
   { label: "Police secours (2)", phone: "111" },

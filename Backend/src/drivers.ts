@@ -113,7 +113,7 @@ export function setDriverStatus(userId: number, status: "approved" | "suspended"
   publishToUser(userId, { type: "profile" });
   publish("drivers", { type: "available-rides" });
   if (status === "approved" && previous.status !== "approved") {
-    notifyUser(userId, "Compte validé ✅", "Votre compte chauffeur est validé. Passez en ligne pour recevoir des courses.", {
+    notifyUser(userId, "Compte validé", "Votre compte chauffeur est validé. Passez en ligne pour recevoir des courses.", {
       url: "/chauffeur",
       sms: true,
     });

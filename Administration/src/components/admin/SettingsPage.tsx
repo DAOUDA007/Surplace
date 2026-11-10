@@ -39,6 +39,36 @@ function NumberField({
   );
 }
 
+/** Lien d'encaissement d'une formule, avec un bouton pour l'ouvrir et le vérifier. */
+function LinkField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const valid = /^https?:\/\/\S+$/.test(value.trim());
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-semibold">{label}</span>
+      <span className="flex items-center gap-2">
+        <input
+          type="url"
+          inputMode="url"
+          placeholder="https://pay.wave.com/m/…"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-11 w-full min-w-0 rounded-xl border border-line bg-surface px-3 text-sm"
+        />
+        {valid && (
+          <a
+            href={value.trim()}
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 rounded-xl bg-subtle px-3 py-2.5 text-sm font-semibold hover:bg-line"
+          >
+            Tester
+          </a>
+        )}
+      </span>
+    </label>
+  );
+}
+
 function Switch({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex cursor-pointer items-start justify-between gap-3 rounded-2xl bg-subtle p-3">
@@ -96,10 +126,10 @@ export function SettingsPage() {
         }
       />
       <PageError message={error || action.error} />
-      {saved && <p className="mb-4 rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">✅ Réglages enregistrés.</p>}
+      {saved && <p className="animate-pop mb-4 rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">Réglages enregistrés.</p>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="💰 Prix des courses">
+        <Card title="Prix des courses">
           <div className="grid gap-4 sm:grid-cols-2">
             <NumberField label="Prix au kilomètre" value={s.pricing.perKm} suffix="FCFA" onChange={(v) => update((d) => (d.pricing.perKm = v))} />
             <NumberField label="Prix minimum" value={s.pricing.minimumFare} suffix="FCFA" onChange={(v) => update((d) => (d.pricing.minimumFare = v))} />
@@ -120,7 +150,7 @@ export function SettingsPage() {
           </p>
         </Card>
 
-        <Card title="🌙 Majorations">
+        <Card title="Majorations">
           <div className="space-y-3">
             <Switch
               label="Majoration de nuit"
@@ -134,7 +164,7 @@ export function SettingsPage() {
               <NumberField label="Hausse" value={s.surcharges.night.percent} suffix="%" onChange={(v) => update((d) => (d.surcharges.night.percent = v))} />
             </div>
             <Switch
-              label="🌧️ Majoration de pluie (activer pendant la pluie)"
+              label="Majoration de pluie (activer pendant la pluie)"
               hint="À allumer et éteindre à la main quand il pleut."
               checked={s.surcharges.rain.active}
               onChange={(v) => update((d) => (d.surcharges.rain.active = v))}
@@ -146,10 +176,27 @@ export function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="💳 Abonnements des chauffeurs">
+        <Card title="Abonnements des chauffeurs">
           <div className="grid gap-4 sm:grid-cols-2">
             <NumberField label="Mensuel" value={s.plans.monthly} suffix="FCFA" onChange={(v) => update((d) => (d.plans.monthly = v))} />
             <NumberField label="Annuel" value={s.plans.yearly} suffix="FCFA" onChange={(v) => update((d) => (d.plans.yearly = v))} />
+            <div className="space-y-3 sm:col-span-2">
+              <LinkField
+                label="Lien d'encaissement — mensuel"
+                value={s.paymentLinks.monthly}
+                onChange={(v) => update((d) => (d.paymentLinks.monthly = v))}
+              />
+              <LinkField
+                label="Lien d'encaissement — annuel"
+                value={s.paymentLinks.yearly}
+                onChange={(v) => update((d) => (d.paymentLinks.yearly = v))}
+              />
+              <p className="text-xs text-muted">
+                Page de paiement Wave, Orange Money, Djamo… ouverte par les boutons « Payer » de la page d&apos;accueil et
+                de l&apos;espace chauffeur. Laissez vide pour envoyer vers l&apos;inscription chauffeur ; vous confirmez
+                ensuite chaque paiement dans « Abonnements ».
+              </p>
+            </div>
             <NumberField
               label="Parrainage : jours offerts"
               value={s.referralDays}
@@ -160,7 +207,7 @@ export function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="🏍️ Attribution des courses">
+        <Card title="Attribution des courses">
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-1 rounded-2xl bg-subtle p-1 text-sm font-semibold">
               {(["auto", "open"] as const).map((mode) => (
@@ -186,7 +233,7 @@ export function SettingsPage() {
               </div>
             )}
             <Switch
-              label="📄 Documents obligatoires"
+              label="Documents obligatoires"
               hint="Un chauffeur sans photo, permis, carte grise et pièce d'identité valides ne peut pas passer en ligne."
               checked={s.documentsRequired}
               onChange={(v) => update((d) => (d.documentsRequired = v))}

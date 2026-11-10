@@ -72,7 +72,7 @@ export function RidesPage({ initialFilter = "all" }: { initialFilter?: Filter })
         {loading && !data ? (
           <LoadingRows />
         ) : rides.length === 0 ? (
-          <EmptyState icon="🏍️" title="Aucune course" text="Aucune course ne correspond à ces critères." />
+          <EmptyState title="Aucune course" text="Aucune course ne correspond à ces critères." />
         ) : (
           <TableWrap minWidth={900}>
             <thead>
@@ -141,11 +141,11 @@ export function RidesPage({ initialFilter = "all" }: { initialFilter?: Filter })
                           <div className="text-sm">
                             <p className="mb-2 text-xs font-bold uppercase text-muted">Contacts</p>
                             <p>
-                              🙋 {r.passenger.name} · {formatPhone(r.passenger.phone)}
+                              Passager : {r.passenger.name} · {formatPhone(r.passenger.phone)}
                             </p>
                             {r.driver && (
                               <p>
-                                🏍️ {r.driver.name} · {formatPhone(r.driver.phone)} · {r.driver.plate}
+                                Chauffeur : {r.driver.name} · {formatPhone(r.driver.phone)} · {r.driver.plate}
                               </p>
                             )}
                             <p className="mt-2 text-muted">

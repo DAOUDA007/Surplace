@@ -18,7 +18,7 @@ function uptime(seconds: number) {
 function Line({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
   return (
     <li className="flex items-start gap-3 py-2">
-      <span>{ok ? "🟢" : "🟠"}</span>
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${ok ? "bg-emerald-500" : "bg-amber-500"}`} />
       <span>
         <span className="block text-sm font-semibold">{label}</span>
         <span className="block text-xs text-muted">{detail}</span>
@@ -48,7 +48,7 @@ export function SystemPage() {
             disabled={action.busy === "backup"}
             className="rounded-2xl bg-brand px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {action.busy === "backup" ? "Sauvegarde…" : "💾 Sauvegarder maintenant"}
+            {action.busy === "backup" ? "Sauvegarde…" : "Sauvegarder maintenant"}
           </button>
         }
       />

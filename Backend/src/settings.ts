@@ -44,6 +44,22 @@ function num(value: unknown, label: string, min: number, max: number, integer = 
 
 const bool = (value: unknown) => value === true;
 
+/** Lien d'encaissement : vide, ou adresse web complète (https://…). Les autres protocoles sont refusés. */
+function paymentLink(value: unknown, label: string) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new HttpError(400, `${label} : adresse invalide (elle doit commencer par https://).`);
+  }
+  if (!["https:", "http:"].includes(url.protocol) || text.length > 500) {
+    throw new HttpError(400, `${label} : adresse invalide (elle doit commencer par https://).`);
+  }
+  return url.toString();
+}
+
 /** Valide et enregistre les réglages envoyés par l'administration. */
 export function updateSettings(input: unknown): AppSettings {
   const s = merge(getSettings(), input);
@@ -71,6 +87,10 @@ export function updateSettings(input: unknown): AppSettings {
     plans: {
       monthly: num(s.plans.monthly, "Abonnement mensuel", 0, 1_000_000),
       yearly: num(s.plans.yearly, "Abonnement annuel", 0, 10_000_000),
+    },
+    paymentLinks: {
+      monthly: paymentLink(s.paymentLinks.monthly, "Lien de paiement mensuel"),
+      yearly: paymentLink(s.paymentLinks.yearly, "Lien de paiement annuel"),
     },
     dispatch: {
       mode: s.dispatch.mode === "open" ? "open" : "auto",

@@ -74,7 +74,7 @@ export function BroadcastPage() {
                 <span className="block text-xs text-muted">Pour les personnes sans l&apos;application ouverte. Chaque SMS peut être facturé par l&apos;opérateur.</span>
               </span>
             </label>
-            {sent && <p className="rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">✅ {sent}</p>}
+            {sent && <p className="animate-pop rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">{sent}</p>}
             <button
               type="submit"
               disabled={action.busy === "send"}
@@ -88,7 +88,7 @@ export function BroadcastPage() {
           {loading && !data ? (
             <LoadingRows />
           ) : !data?.broadcasts.length ? (
-            <EmptyState icon="📣" title="Aucun message envoyé" />
+            <EmptyState title="Aucun message envoyé" />
           ) : (
             <ul className="space-y-3">
               {data.broadcasts.map((b) => (

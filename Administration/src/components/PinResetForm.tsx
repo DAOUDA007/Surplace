@@ -33,7 +33,7 @@ export function PinResetForm({ loginHref = "/connexion" }: { loginHref?: string 
   if (done) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-4xl">✅</p>
+        <span className="mx-auto block h-1.5 w-12 rounded-full bg-emerald-500 animate-pop" />
         <p className="font-semibold">Votre nouveau code PIN est enregistré.</p>
         <Link href={loginHref} className="inline-flex h-12 items-center rounded-2xl bg-brand px-6 font-semibold text-white">
           Se connecter

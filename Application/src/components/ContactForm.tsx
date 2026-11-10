@@ -35,8 +35,7 @@ export function ContactForm() {
 
   if (sent) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-surface p-8 text-center ring-1 ring-line">
-        <p className="text-4xl">✅</p>
+      <div className="animate-pop flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-surface p-8 text-center ring-1 ring-line">
         <p className="text-xl font-extrabold">Message envoyé !</p>
         <p className="text-sm text-muted">Merci, notre équipe vous répondra au plus vite.</p>
         <Button variant="ghost" onClick={() => setSent(false)}>

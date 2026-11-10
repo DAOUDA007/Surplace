@@ -9,7 +9,7 @@ import { sendSmsInBackground } from "./sms";
 import type { EmergencyAlert, RideStatus, User } from "./types";
 
 /**
- * Bouton d'urgence 🆘 (passager ou chauffeur, pendant une course).
+ * Bouton d'urgence (passager ou chauffeur, pendant une course).
  * - l'alerte apparaît en rouge dans l'administration (et en notification push pour l'équipe) ;
  * - la personne à prévenir (profil) reçoit un SMS avec le lien de suivi de la course.
  */
@@ -43,7 +43,7 @@ export function createAlert(user: User, body: Record<string, unknown>) {
   publish("admins", { type: "alert" });
   const admins = db.prepare("SELECT id FROM users WHERE role = 'admin' AND blocked = 0 AND deleted_at IS NULL").all() as { id: number }[];
   for (const a of admins) {
-    sendPush(a.id, { title: "🆘 ALERTE URGENCE", body: `${user.name} a déclenché le bouton d'urgence.`, url: "/alertes", tag: `alert-${id}` });
+    sendPush(a.id, { title: "ALERTE URGENCE", body: `${user.name} a déclenché le bouton d'urgence.`, url: "/alertes", tag: `alert-${id}` });
   }
 
   // Personne à prévenir.

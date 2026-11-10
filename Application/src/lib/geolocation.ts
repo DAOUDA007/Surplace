@@ -18,7 +18,7 @@ export function geolocationErrorMessage(code: number | "insecure" | "unsupported
     case "unsupported":
       return "Votre navigateur ne permet pas la localisation. Choisissez votre départ sur la carte.";
     case 1:
-      return "L'accès à votre position est refusé. Autorisez-le dans les réglages du navigateur (icône 🔒 à gauche de l'adresse du site), puis touchez « Ma position ».";
+      return "L'accès à votre position est refusé. Autorisez-le dans les réglages du navigateur (cadenas à gauche de l'adresse du site), puis touchez « Ma position ».";
     case 2:
       return "Position introuvable. Activez la localisation (GPS) de votre téléphone, puis réessayez.";
     default:

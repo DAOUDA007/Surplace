@@ -68,7 +68,7 @@ function DocumentRow({ type, doc, onSaved }: { type: DocumentType; doc?: DriverD
       ? { text: "Expiré", style: "bg-red-100 text-red-700" }
       : doc.expiringSoon
         ? { text: "Expire bientôt", style: "bg-amber-100 text-amber-800" }
-        : { text: "Envoyé ✓", style: "bg-emerald-100 text-emerald-800" };
+        : { text: "Envoyé", style: "bg-emerald-100 text-emerald-800" };
 
   return (
     <div className="space-y-2 rounded-2xl border border-line p-4">
@@ -102,7 +102,7 @@ function DocumentRow({ type, doc, onSaved }: { type: DocumentType; doc?: DriverD
           </label>
         )}
         <label className={`inline-flex cursor-pointer items-center rounded-full px-3 py-2 text-xs font-semibold ${busy ? "bg-subtle text-muted" : "bg-contrast text-on-contrast"}`}>
-          {busy ? "Envoi…" : doc ? "📷 Remplacer" : "📷 Prendre ou choisir une photo"}
+          {busy ? "Envoi…" : doc ? "Remplacer" : "Prendre ou choisir une photo"}
           <input
             type="file"
             accept="image/*"
@@ -134,7 +134,7 @@ export function DocumentsPanel() {
 
   return (
     <section id="documents" className="scroll-mt-6 rounded-3xl bg-surface p-5 shadow-sm ring-1 ring-line">
-      <h2 className="text-lg font-extrabold">📄 Mes documents</h2>
+      <h2 className="text-lg font-extrabold">Mes documents</h2>
       <p className="mb-4 text-sm text-muted">
         Ils permettent à l&apos;équipe SURPLACE de vérifier votre identité et votre moto. Seule votre photo est montrée aux
         passagers.

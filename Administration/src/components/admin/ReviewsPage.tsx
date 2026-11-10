@@ -54,7 +54,7 @@ export function ReviewsPage() {
           />
         </div>
         {reviews.length === 0 ? (
-          <EmptyState icon="⭐" title="Aucun avis" text="Les commentaires laissés par les passagers apparaîtront ici." />
+          <EmptyState title="Aucun avis" text="Les commentaires laissés par les passagers apparaîtront ici." />
         ) : (
           <ul className="grid gap-3 md:grid-cols-2">
             {reviews.map((r) => (

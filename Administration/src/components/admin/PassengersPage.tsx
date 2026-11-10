@@ -65,7 +65,7 @@ export function PassengersPage() {
         {loading && !data ? (
           <LoadingRows />
         ) : passengers.length === 0 ? (
-          <EmptyState icon="🙋" title="Aucun passager" text="Aucun passager ne correspond à ces critères." />
+          <EmptyState title="Aucun passager" text="Aucun passager ne correspond à ces critères." />
         ) : (
           <TableWrap minWidth={820}>
             <thead>

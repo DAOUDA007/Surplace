@@ -34,9 +34,9 @@ export function ShareRideButton({ rideId, className = "" }: { rideId: number; cl
         type="button"
         onClick={share}
         disabled={busy}
-        className={`inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 disabled:opacity-60 ${className}`}
+        className={`inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition active:scale-95 disabled:opacity-60 ${className}`}
       >
-        📤 Partager ma course
+        Partager ma course
       </button>
       {message && <span className="mt-1 text-xs text-muted">{message}</span>}
     </span>

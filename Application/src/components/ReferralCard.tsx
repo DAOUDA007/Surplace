@@ -13,7 +13,7 @@ export function ReferralCard({ code }: { code: string | null }) {
 
   return (
     <section className="rounded-3xl bg-brand-soft p-5">
-      <h2 className="text-lg font-extrabold">🎁 Parrainez des chauffeurs</h2>
+      <h2 className="text-lg font-extrabold">Parrainez des chauffeurs</h2>
       <p className="mt-1 text-sm text-muted">
         Quand un chauffeur inscrit avec votre code paie son premier abonnement, vous recevez{" "}
         <strong className="text-ink">{days} jours d&apos;abonnement offerts</strong>.
@@ -28,7 +28,7 @@ export function ReferralCard({ code }: { code: string | null }) {
           }}
           className="rounded-full bg-contrast px-3 py-2 text-xs font-semibold text-on-contrast"
         >
-          {copied ? "Copié ✓" : "Copier"}
+          {copied ? "Copié" : "Copier"}
         </button>
         <a
           href={`https://wa.me/?text=${encodeURIComponent(text)}`}

@@ -152,6 +152,8 @@ export interface DriverSubscription {
   history: SubscriptionRecord[];
   /** Prix actuels des formules (réglables dans l'administration). */
   prices: Record<SubscriptionPlanId, number>;
+  /** Liens d'encaissement des formules (vides si non réglés). */
+  paymentLinks: Record<SubscriptionPlanId, string>;
 }
 
 export interface AdminSubscription {
@@ -199,6 +201,11 @@ export interface AppSettings {
   };
   /** Prix des abonnements des chauffeurs (FCFA). */
   plans: Record<SubscriptionPlanId, number>;
+  /**
+   * Lien d'encaissement de chaque formule (page de paiement Wave, Orange Money, Djamo…), réglé dans
+   * l'administration. Vide : le bouton mène à l'inscription ou à l'espace chauffeur.
+   */
+  paymentLinks: Record<SubscriptionPlanId, string>;
   dispatch: {
     /** auto : la demande est proposée au chauffeur le plus proche, puis au suivant ; open : visible par tous. */
     mode: "auto" | "open";

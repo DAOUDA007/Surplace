@@ -107,7 +107,7 @@ export function dispatchTick() {
     })();
     publishToUser(candidate.id, { type: "offer", rideId: ride.id });
     sendPush(candidate.id, {
-      title: "🏍️ Course proposée",
+      title: "Course proposée",
       body: `${ride.pickup_label} · à ${candidate.distanceKm.toFixed(1)} km. Répondez vite !`,
       url: "/chauffeur",
       tag: "offer",

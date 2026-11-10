@@ -5,6 +5,7 @@ import { MapView, type MapMarker } from "@/components/MapView";
 import { Route, StatusBadge } from "@/components/ui";
 import { useAdminData } from "@/hooks/useAdminData";
 import { formatDateTime } from "@/lib/format";
+import { CountUp } from "@/components/CountUp";
 import { formatFcfa } from "@/lib/pricing";
 import type { AdminOverview } from "@/lib/types";
 import { Card, EmptyState, LoadingRows, PageError, PageHeader, StatTile } from "./ui";
@@ -20,10 +21,16 @@ function WeekChart({ days }: { days: AdminOverview["days"] }) {
             <div key={d.day} className="group relative flex h-full flex-1 items-end justify-center">
               {/* Zone de survol plus large que la barre */}
               <div
-                className="w-full max-w-10 rounded-t-[4px] bg-brand transition group-hover:bg-brand-dark"
-                style={{ height: `${(d.completed / max) * 100}%`, minHeight: d.completed ? 4 : 0 }}
+                className="bar-grow w-full max-w-10 rounded-t-[4px] bg-brand group-hover:bg-brand-dark"
+                style={
+                  {
+                    height: `${(d.completed / max) * 100}%`,
+                    minHeight: d.completed ? 4 : 0,
+                    "--d": days.indexOf(d),
+                  } as React.CSSProperties
+                }
               />
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max -translate-x-1/2 rounded-xl bg-contrast px-3 py-2 text-xs text-on-contrast shadow-lg group-hover:block">
+              <div className="animate-pop pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-max -translate-x-1/2 rounded-xl bg-contrast px-3 py-2 text-xs text-on-contrast shadow-lg group-hover:block">
                 <p className="font-semibold capitalize">{label}</p>
                 <p>{d.completed} terminée{d.completed > 1 ? "s" : ""}</p>
                 <p className="opacity-70">{d.cancelled} annulée{d.cancelled > 1 ? "s" : ""}</p>
@@ -63,6 +70,8 @@ function WeekChart({ days }: { days: AdminOverview["days"] }) {
   );
 }
 
+const fcfa = (n: number) => formatFcfa(Math.round(n));
+
 export function OverviewPage() {
   const { data, error, loading } = useAdminData<AdminOverview>("/api/admin/overview", 10_000);
 
@@ -71,12 +80,12 @@ export function OverviewPage() {
   const { stats, days, onlineDrivers, activeRides } = data;
 
   const todo = [
-    { count: stats.alertsOpen, label: "ALERTE(S) D'URGENCE à traiter tout de suite", href: "/alertes", icon: "🆘" },
-    { count: stats.driversPending, label: "chauffeur(s) à valider", href: "/chauffeurs?statut=pending", icon: "🪪" },
-    { count: stats.complaintsOpen, label: "réclamation(s) à traiter", href: "/reclamations", icon: "📮" },
-    { count: stats.documentsExpiring, label: "document(s) de chauffeur expiré(s) ou bientôt expiré(s)", href: "/chauffeurs", icon: "📄" },
-    { count: stats.subscriptionsPending, label: "paiement(s) d'abonnement à confirmer", href: "/abonnements", icon: "💳" },
-    { count: stats.messagesUnread, label: "message(s) non traité(s)", href: "/messages", icon: "✉️" },
+    { count: stats.alertsOpen, label: "ALERTE(S) D'URGENCE à traiter tout de suite", href: "/alertes", urgent: true },
+    { count: stats.driversPending, label: "chauffeur(s) à valider", href: "/chauffeurs?statut=pending" },
+    { count: stats.complaintsOpen, label: "réclamation(s) à traiter", href: "/reclamations" },
+    { count: stats.documentsExpiring, label: "document(s) de chauffeur expiré(s) ou bientôt expiré(s)", href: "/chauffeurs" },
+    { count: stats.subscriptionsPending, label: "paiement(s) d'abonnement à confirmer", href: "/abonnements" },
+    { count: stats.messagesUnread, label: "message(s) non traité(s)", href: "/messages" },
   ].filter((t) => t.count > 0);
 
   const markers: MapMarker[] = [
@@ -99,7 +108,7 @@ export function OverviewPage() {
       />
       <PageError message={error} />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile
           label="Courses aujourd'hui"
           value={stats.ridesToday}
@@ -114,16 +123,16 @@ export function OverviewPage() {
         />
         <StatTile
           label="Abonnements ce mois"
-          value={formatFcfa(stats.subscriptionRevenueMonth)}
+          value={<CountUp value={stats.subscriptionRevenueMonth} format={fcfa} />}
           sub={`${formatFcfa(stats.subscriptionRevenueTotal)} au total`}
         />
         <StatTile label="Chauffeurs abonnés" value={`${stats.activeSubscribers} / ${stats.drivers}`} />
         <StatTile
           label="Montant des courses du jour"
-          value={formatFcfa(stats.revenueToday)}
+          value={<CountUp value={stats.revenueToday} format={fcfa} />}
           sub="encaissé par les chauffeurs"
         />
-        <StatTile label="Montant total des courses" value={formatFcfa(stats.revenueTotal)} />
+        <StatTile label="Montant total des courses" value={<CountUp value={stats.revenueTotal} format={fcfa} />} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -132,26 +141,29 @@ export function OverviewPage() {
             <MapView markers={markers} fitTo={markers.map((m) => m.position)} />
           </div>
           <p className="absolute left-3 top-3 z-[500] rounded-full bg-surface px-3 py-1 text-xs font-semibold shadow">
-            🟢 Carte en direct · {onlineDrivers.length} chauffeur{onlineDrivers.length > 1 ? "s" : ""} en ligne
+            <span className="live-dot mr-2 text-emerald-500" />
+            Carte en direct · {onlineDrivers.length} chauffeur{onlineDrivers.length > 1 ? "s" : ""} en ligne
           </p>
         </section>
         <div className="space-y-6">
           <Card title="À traiter">
             {todo.length === 0 ? (
-              <p className="text-sm text-muted">✅ Rien en attente. Tout est à jour.</p>
+              <p className="text-sm text-muted">Rien en attente. Tout est à jour.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="stagger space-y-2">
                 {todo.map((t) => (
                   <li key={t.href}>
                     <Link
                       href={t.href}
-                      className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800 hover:ring-1 hover:ring-amber-200"
+                      className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition hover:ring-1 ${
+                        t.urgent ? "bg-red-50 text-red-700 hover:ring-red-200" : "bg-amber-50 text-amber-800 hover:ring-amber-200"
+                      }`}
                     >
-                      <span>{t.icon}</span>
+                      {t.urgent && <span className="live-dot text-red-600" />}
                       <span className="flex-1">
                         <strong>{t.count}</strong> {t.label}
                       </span>
-                      <span>→</span>
+                      <span className="transition group-hover:translate-x-1">→</span>
                     </Link>
                   </li>
                 ))}
@@ -174,9 +186,9 @@ export function OverviewPage() {
         }
       >
         {activeRides.length === 0 ? (
-          <EmptyState icon="🛵" title="Aucune course en cours" />
+          <EmptyState title="Aucune course en cours" />
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="stagger divide-y divide-line">
             {activeRides.map((r) => (
               <li key={r.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_200px_auto] sm:items-center">
                 <Route from={r.pickup.label} to={r.dropoff.label} />

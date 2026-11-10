@@ -43,14 +43,14 @@ function layout(opts: { preheader: string; firstName: string; intro: string; bod
         <!-- En-tête -->
         <tr>
           <td style="background:${INK};padding:28px 32px;">
-            <p style="margin:0;font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;">🏍️ SUR<span style="color:${BRAND};">PLACE</span></p>
+            <p style="margin:0;font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;">SUR<span style="color:${BRAND};">PLACE</span></p>
             <p style="margin:6px 0 0 0;font-size:13px;color:#d6d3d1;">Le taxi-moto de Korhogo</p>
           </td>
         </tr>
         <!-- Message -->
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <h1 style="margin:0 0 12px 0;font-size:24px;line-height:30px;color:${INK};">Bienvenue, ${escapeHtml(opts.firstName)} ! 👋</h1>
+            <h1 style="margin:0 0 12px 0;font-size:24px;line-height:30px;color:${INK};">Bienvenue, ${escapeHtml(opts.firstName)} !</h1>
             <p style="margin:0 0 24px 0;font-size:15px;line-height:23px;color:${MUTED};">${opts.intro}</p>
             ${opts.body}
           </td>
@@ -66,8 +66,8 @@ function layout(opts: { preheader: string; firstName: string; intro: string; bod
           <td style="padding:20px 32px;background:#fff1e6;">
             <p style="margin:0 0 6px 0;font-size:14px;font-weight:700;color:${INK};">Besoin d'aide ?</p>
             <p style="margin:0;font-size:13px;line-height:20px;color:${MUTED};">
-              📞 ${CONTACT.phone} · 💬 WhatsApp : <a href="https://wa.me/${CONTACT.whatsapp}" style="color:${BRAND};">${CONTACT.phone}</a><br>
-              ✉️ <a href="mailto:${CONTACT.email}" style="color:${BRAND};">${CONTACT.email}</a> · 🕐 ${CONTACT.hours}
+              Téléphone : ${CONTACT.phone} · WhatsApp : <a href="https://wa.me/${CONTACT.whatsapp}" style="color:${BRAND};">${CONTACT.phone}</a><br>
+              E-mail : <a href="mailto:${CONTACT.email}" style="color:${BRAND};">${CONTACT.email}</a> · ${CONTACT.hours}
             </p>
           </td>
         </tr>
@@ -154,5 +154,5 @@ export function welcomeEmail(user: { name: string; email: string; role: "passeng
     `Commander : ${SITE_URL}/passager`,
     `Besoin d'aide ? ${CONTACT.phone} · ${CONTACT.email}`,
   ].join("\n");
-  return { to: user.email, subject: `Bienvenue sur SURPLACE, ${firstName} ! 🏍️`, html, text };
+  return { to: user.email, subject: `Bienvenue sur SURPLACE, ${firstName} !`, html, text };
 }

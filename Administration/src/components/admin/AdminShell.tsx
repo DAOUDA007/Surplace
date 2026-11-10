@@ -16,7 +16,6 @@ import type { AdminCounts, AdminPermission, User } from "@/lib/types";
 interface NavItem {
   href: string;
   label: string;
-  icon: string;
   badge?: keyof AdminCounts;
   /** Pastille neutre (information) plutôt que rouge (action requise). */
   info?: boolean;
@@ -27,46 +26,46 @@ interface NavItem {
 }
 
 const NAV: { title?: string; items: NavItem[] }[] = [
-  { items: [{ href: "/", label: "Vue d'ensemble", icon: "📊" }] },
+  { items: [{ href: "/", label: "Vue d'ensemble" }] },
   {
     title: "Activité",
     items: [
-      { href: "/alertes", label: "Urgences", icon: "🆘", badge: "alertsOpen", permission: "alerts" },
-      { href: "/courses", label: "Courses", icon: "🏍️", badge: "activeRides", info: true, permission: "rides" },
+      { href: "/alertes", label: "Urgences", badge: "alertsOpen", permission: "alerts" },
+      { href: "/courses", label: "Courses", badge: "activeRides", info: true, permission: "rides" },
     ],
   },
   {
     title: "Utilisateurs",
     items: [
-      { href: "/chauffeurs", label: "Chauffeurs", icon: "🪪", badge: "driversPending", permission: "drivers" },
-      { href: "/passagers", label: "Passagers", icon: "🙋", permission: "passengers" },
+      { href: "/chauffeurs", label: "Chauffeurs", badge: "driversPending", permission: "drivers" },
+      { href: "/passagers", label: "Passagers", permission: "passengers" },
     ],
   },
   {
     title: "Finances",
     items: [
-      { href: "/abonnements", label: "Abonnements", icon: "💳", badge: "subscriptionsPending", permission: "subscriptions" },
-      { href: "/rapports", label: "Rapports et exports", icon: "📈", permission: "reports" },
+      { href: "/abonnements", label: "Abonnements", badge: "subscriptionsPending", permission: "subscriptions" },
+      { href: "/rapports", label: "Rapports et exports", permission: "reports" },
     ],
   },
   {
     title: "Relation client",
     items: [
-      { href: "/reclamations", label: "Réclamations", icon: "📮", badge: "complaintsOpen", permission: "complaints" },
-      { href: "/avis", label: "Avis", icon: "⭐", permission: "reviews" },
-      { href: "/messages", label: "Messages", icon: "✉️", badge: "messagesUnread", permission: "messages" },
-      { href: "/diffusion", label: "Messages groupés", icon: "📣", permission: "broadcast" },
+      { href: "/reclamations", label: "Réclamations", badge: "complaintsOpen", permission: "complaints" },
+      { href: "/avis", label: "Avis", permission: "reviews" },
+      { href: "/messages", label: "Messages", badge: "messagesUnread", permission: "messages" },
+      { href: "/diffusion", label: "Messages groupés", permission: "broadcast" },
     ],
   },
   {
     title: "Paramètres",
     items: [
-      { href: "/reglages", label: "Tarifs et réglages", icon: "🎚️", permission: "settings" },
-      { href: "/lieux", label: "Lieux fréquents", icon: "📍", permission: "places" },
-      { href: "/administrateurs", label: "Administrateurs", icon: "🛡️" },
-      { href: "/journal", label: "Journal des actions", icon: "🗂️", permission: "audit" },
-      { href: "/systeme", label: "Système et sauvegardes", icon: "🖥️", permission: "system" },
-      { href: "/compte", label: "Mon compte", icon: "⚙️" },
+      { href: "/reglages", label: "Tarifs et réglages", permission: "settings" },
+      { href: "/lieux", label: "Lieux fréquents", permission: "places" },
+      { href: "/administrateurs", label: "Administrateurs" },
+      { href: "/journal", label: "Journal des actions", permission: "audit" },
+      { href: "/systeme", label: "Système et sauvegardes", permission: "system" },
+      { href: "/compte", label: "Mon compte" },
     ],
   },
 ];
@@ -136,17 +135,15 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
-                        active ? "bg-brand text-white shadow-sm" : "text-muted hover:bg-subtle hover:text-ink"
+                      className={`relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition duration-200 ${
+                        active ? "bg-brand text-white shadow-sm" : "text-muted hover:translate-x-0.5 hover:bg-subtle hover:text-ink"
                       }`}
                     >
-                      <span className="w-5 text-center" aria-hidden>
-                        {item.icon}
-                      </span>
                       <span className="flex-1">{item.label}</span>
                       {badge > 0 && (
                         <span
-                          className={`min-w-5 rounded-full px-1.5 text-center text-xs font-bold ${
+                          key={badge}
+                          className={`animate-pop min-w-5 rounded-full px-1.5 text-center text-xs font-bold ${
                             active ? "bg-white text-brand" : item.info ? "bg-subtle text-ink ring-1 ring-line" : "bg-red-600 text-white"
                           }`}
                         >
@@ -168,7 +165,7 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{user.name}</span>
-            <span className="block text-xs text-muted">{user.isPrincipal ? "👑 Admin principal" : "Administrateur"}</span>
+            <span className="block text-xs text-muted">{user.isPrincipal ? "Admin principal" : "Administrateur"}</span>
           </span>
         </div>
         <ThemeToggle withLabel className="w-full rounded-2xl px-3 py-2 text-left text-sm text-muted hover:bg-subtle" />
@@ -185,12 +182,12 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
             }}
             className="block w-full rounded-2xl px-3 py-2 text-left text-sm text-muted hover:bg-subtle"
           >
-            {pushOn ? "🔕 Couper les alertes sur cet appareil" : "📳 Recevoir les alertes d'urgence ici"}
+            {pushOn ? "Couper les alertes sur cet appareil" : "Recevoir les alertes d'urgence ici"}
           </button>
         )}
         <InstallButton className="block w-full rounded-2xl px-3 py-2 text-left text-sm font-semibold text-brand hover:bg-subtle" />
         <button onClick={logout} className="block w-full rounded-2xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-          ↩ Se déconnecter
+          Se déconnecter
         </button>
       </div>
     </div>
@@ -204,34 +201,45 @@ export function AdminShell({ user, children }: { user: User; children: React.Rea
       {/* Tiroir sur mobile et tablette */}
       {open && (
         <div className="fixed inset-0 z-[1200] lg:hidden">
-          <button aria-label="Fermer le menu" className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-surface shadow-2xl">{sidebar}</aside>
+          <button aria-label="Fermer le menu" className="animate-fade-in absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <aside className="animate-drawer absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-surface shadow-2xl">{sidebar}</aside>
         </div>
       )}
 
       <header className="sticky top-0 z-[1000] flex items-center gap-3 border-b border-line bg-surface/90 px-4 py-3 backdrop-blur lg:hidden">
         <button
           onClick={() => setOpen(true)}
-          className="relative grid h-10 w-10 place-items-center rounded-xl bg-subtle text-lg"
+          className="relative grid h-10 w-10 place-items-center rounded-xl bg-subtle transition active:scale-95"
           aria-label="Ouvrir le menu"
         >
-          ☰
+          <span aria-hidden className="flex w-4 flex-col gap-[3px]">
+            <span className="h-0.5 rounded bg-current" />
+            <span className="h-0.5 rounded bg-current" />
+            <span className="h-0.5 rounded bg-current" />
+          </span>
           {totalAlerts > 0 && (
             <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-xs font-bold text-white">{totalAlerts}</span>
           )}
         </button>
         <span className="font-bold">
-          {current?.icon} {current?.label ?? "Administration"}
+          {current?.label ?? "Administration"}
         </span>
       </header>
 
       {showAlertBanner && (
-        <Link href="/alertes" className="block animate-pulse bg-red-600 px-4 py-3 text-center font-bold text-white">
-          🆘 {counts!.alertsOpen} alerte{counts!.alertsOpen > 1 ? "s" : ""} d&apos;urgence en attente — cliquez pour traiter
+        <Link
+          href="/alertes"
+          className="animate-fade-in flex items-center justify-center gap-3 bg-red-600 px-4 py-3 text-center font-bold text-white"
+        >
+          <span className="live-dot text-white" />
+          {counts!.alertsOpen} alerte{counts!.alertsOpen > 1 ? "s" : ""} d&apos;urgence en attente — cliquez pour traiter
         </Link>
       )}
 
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">{children}</main>
+      {/* Chaque écran entre en douceur (la clé change avec l'adresse). */}
+      <main key={pathname} className="animate-fade-up mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+        {children}
+      </main>
     </div>
   );
 }

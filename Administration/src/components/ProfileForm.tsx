@@ -74,7 +74,7 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
       setSuccess(
         revalidation
           ? "Profil enregistré. Votre nouveau véhicule doit être vérifié par SURPLACE : votre compte est en attente de validation."
-          : "✅ Profil enregistré.",
+          : "Profil enregistré.",
       );
       router.refresh();
     } catch (err) {
@@ -131,14 +131,14 @@ export function ProfileInfoForm({ user, driver }: { user: User; driver?: DriverP
         )}
         {vehicleChanged && driver?.status === "approved" && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            ⚠️ En changeant de véhicule ou de permis, votre compte repassera en validation : vous ne pourrez plus
+            En changeant de véhicule ou de permis, votre compte repassera en validation : vous ne pourrez plus
             passer en ligne jusqu&apos;à ce que l&apos;équipe SURPLACE ait vérifié vos informations.
           </p>
         )}
         {user.role !== "admin" && (
           <div className="space-y-3 rounded-2xl bg-subtle p-4">
             <div>
-              <p className="text-sm font-semibold">🆘 Personne à prévenir en cas d&apos;urgence (facultatif)</p>
+              <p className="text-sm font-semibold">Personne à prévenir en cas d&apos;urgence (facultatif)</p>
               <p className="text-xs text-muted">
                 Si vous touchez le bouton d&apos;urgence pendant une course, elle reçoit un SMS avec votre position.
               </p>
@@ -216,7 +216,7 @@ export function PinForm() {
           </Field>
         </div>
         <ErrorMessage>{error}</ErrorMessage>
-        {done && <p className="rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">✅ Code PIN modifié.</p>}
+        {done && <p className="animate-pop rounded-xl bg-emerald-100 px-3 py-2 text-sm text-emerald-800">Code PIN modifié.</p>}
         <Button type="submit" loading={loading} variant="dark">
           Modifier le code PIN
         </Button>

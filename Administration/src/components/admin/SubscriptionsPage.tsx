@@ -49,7 +49,7 @@ export function SubscriptionsPage() {
           aussitôt.
         </p>
         {pending.length === 0 ? (
-          <EmptyState icon="✅" title="Aucune demande en attente" />
+          <EmptyState title="Aucune demande en attente" />
         ) : (
           <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {pending.map((s) => (
@@ -93,13 +93,13 @@ export function SubscriptionsPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 Chauffeur…"
+            placeholder="Rechercher un chauffeur…"
             className="h-9 w-44 rounded-2xl border border-line bg-surface px-3 text-sm outline-none focus:border-ink"
           />
         }
       >
         {paid.length === 0 ? (
-          <EmptyState icon="💳" title="Aucun paiement" />
+          <EmptyState title="Aucun paiement" />
         ) : (
           <TableWrap minWidth={760}>
             <thead>

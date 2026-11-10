@@ -89,7 +89,7 @@ export default async function DriverHistory() {
 
           {stats?.referrals.code && (
             <p className="rounded-2xl bg-brand-soft px-4 py-3 text-sm">
-              🎁 Parrainage : <strong>{stats.referrals.count}</strong> chauffeur(s) inscrit(s) avec votre code{" "}
+              Parrainage : <strong>{stats.referrals.count}</strong> chauffeur(s) inscrit(s) avec votre code{" "}
               <strong>{stats.referrals.code}</strong>, dont {stats.referrals.rewarded} récompensé(s).
             </p>
           )}

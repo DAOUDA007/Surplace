@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     rain: { active: false, percent: 15 },
   },
   plans: { monthly: SUBSCRIPTION_PLANS.monthly.price, yearly: SUBSCRIPTION_PLANS.yearly.price },
+  paymentLinks: { monthly: "", yearly: "" },
   dispatch: { mode: "auto", offerSeconds: 20, maxOffers: 3 },
   referralDays: 7,
   documentsRequired: false,

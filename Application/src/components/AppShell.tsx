@@ -50,7 +50,7 @@ export const Sheet = forwardRef<HTMLDivElement, { children: React.ReactNode }>(f
   return (
     <div
       ref={ref}
-      className="absolute inset-x-0 bottom-0 z-[1000] max-h-[72dvh] overflow-y-auto rounded-t-3xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(0_0_0/0.12)] md:inset-x-auto md:bottom-auto md:left-4 md:top-20 md:max-h-[calc(100dvh-6rem)] md:w-[400px] md:rounded-3xl md:shadow-xl"
+      className="sheet-in absolute inset-x-0 bottom-0 z-[1000] max-h-[72dvh] overflow-y-auto rounded-t-3xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgb(0_0_0/0.12)] md:inset-x-auto md:bottom-auto md:left-4 md:top-20 md:max-h-[calc(100dvh-6rem)] md:w-[400px] md:rounded-3xl md:shadow-xl"
     >
       <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-line md:hidden" />
       {children}

@@ -76,41 +76,48 @@ export function AppMenu({ name, links, role }: { name: string; links: MenuLink[]
 
   return (
     <div className="relative flex items-center gap-2">
-      <Link
-        href="/notifications"
-        className="relative grid h-11 w-11 place-items-center rounded-full bg-surface text-lg shadow-md"
-        aria-label={`Notifications${unread ? ` (${unread} non lues)` : ""}`}
-      >
-        🔔
-        {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </Link>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 items-center gap-2 rounded-full bg-surface px-3 font-semibold shadow-md"
+        className="relative flex h-11 items-center gap-2 rounded-full bg-surface px-3 font-semibold shadow-md transition active:scale-95"
         aria-expanded={open}
+        aria-label={`Menu${unread ? ` (${unread} notification${unread > 1 ? "s" : ""} non lue${unread > 1 ? "s" : ""})` : ""}`}
       >
         <span className="grid h-7 w-7 place-items-center rounded-full bg-contrast text-sm text-on-contrast">
           {name.charAt(0).toUpperCase()}
         </span>
         <span className="max-w-28 truncate text-sm">{name.split(" ")[0]}</span>
-        <span aria-hidden>☰</span>
+        {/* Trois traits qui se croisent quand le menu est ouvert. */}
+        <span aria-hidden className="relative h-3 w-4">
+          <span className={`absolute left-0 h-0.5 w-4 rounded bg-current transition duration-300 ${open ? "top-1.5 rotate-45" : "top-0"}`} />
+          <span className={`absolute left-0 top-1.5 h-0.5 w-4 rounded bg-current transition duration-200 ${open ? "opacity-0" : ""}`} />
+          <span className={`absolute left-0 h-0.5 w-4 rounded bg-current transition duration-300 ${open ? "top-1.5 -rotate-45" : "top-3"}`} />
+        </span>
+        {unread > 0 && (
+          <span className="animate-pop absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-[1100] mt-2 max-h-[75dvh] w-72 overflow-y-auto rounded-2xl bg-surface shadow-xl ring-1 ring-line">
+        <div className="animate-pop absolute right-0 top-full z-[1100] mt-2 max-h-[75dvh] w-72 origin-top-right overflow-y-auto rounded-2xl bg-surface shadow-xl ring-1 ring-line">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className="block px-4 py-3 text-sm hover:bg-subtle" onClick={() => setOpen(false)}>
+            <Link
+              key={l.href}
+              href={l.href}
+              className="flex items-center justify-between px-4 py-3 text-sm transition hover:bg-subtle"
+              onClick={() => setOpen(false)}
+            >
               {l.label}
+              {l.href === "/notifications" && unread > 0 && (
+                <span className="rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">{unread}</span>
+              )}
             </Link>
           ))}
           <div className="border-t border-line py-1">
             <p className="px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">Réglages</p>
             <ThemeToggle withLabel className="w-full px-4 py-2.5 text-left text-sm hover:bg-subtle" />
             <Toggle
-              label="🔍 Mode simple"
+              label="Mode simple"
               hint="Textes et boutons plus grands"
               checked={prefs.simple}
               onChange={(v) => {
@@ -119,7 +126,7 @@ export function AppMenu({ name, links, role }: { name: string; links: MenuLink[]
               }}
             />
             <Toggle
-              label="🔊 Annonces vocales"
+              label="Annonces vocales"
               hint="L'application annonce les étapes à voix haute"
               checked={prefs.voice}
               onChange={(v) => {
@@ -146,7 +153,7 @@ export function AppMenu({ name, links, role }: { name: string; links: MenuLink[]
             )}
             {pushSupported() && (
               <Toggle
-                label="📳 Notifications sur le téléphone"
+                label="Notifications sur le téléphone"
                 hint="Même quand l'application est fermée"
                 checked={prefs.push}
                 onChange={async (v) => {
@@ -157,7 +164,7 @@ export function AppMenu({ name, links, role }: { name: string; links: MenuLink[]
             )}
             {role === "driver" && (
               <Toggle
-                label="🔋 Économie de batterie"
+                label="Économie de batterie"
                 hint="Position envoyée moins souvent"
                 checked={prefs.saver}
                 onChange={(v) => {

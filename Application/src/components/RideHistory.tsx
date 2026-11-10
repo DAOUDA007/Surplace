@@ -32,7 +32,7 @@ export function HistoryPage({
       {rides.length === 0 ? (
         <p className="mt-10 text-center text-muted">Aucune course pour le moment.</p>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <ul className="stagger mt-6 space-y-3">
           {rides.map((r) => (
             <li key={r.id} className="space-y-3 rounded-3xl bg-surface p-5 shadow-sm ring-1 ring-line">
               <div className="flex items-center justify-between gap-2">
@@ -44,16 +44,16 @@ export function HistoryPage({
                 <span className="text-muted">
                   {showDriver
                     ? r.driver
-                      ? `🏍️ ${r.driver.name} · ${r.driver.plate}`
+                      ? `${r.driver.name} · ${r.driver.plate}`
                       : "—"
-                    : `🙋 ${r.passenger.name}`}
+                    : r.passenger.name}
                   {r.rating != null && <span className="ml-2 text-amber-500">{"★".repeat(r.rating)}</span>}
                 </span>
                 <span className={`font-extrabold ${r.status === "cancelled" ? "text-faint line-through" : ""}`}>
                   {formatFcfa(r.price)}
                 </span>
               </div>
-              {r.riderName && <p className="text-xs text-muted">👤 Pour {r.riderName}</p>}
+              {r.riderName && <p className="text-xs text-muted">Pour {r.riderName}</p>}
               <ComplaintButton rideId={r.id} />
             </li>
           ))}

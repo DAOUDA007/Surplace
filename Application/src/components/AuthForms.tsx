@@ -144,8 +144,8 @@ export function RegisterForm({
       <div className="grid grid-cols-2 gap-1 rounded-2xl bg-subtle p-1">
         {(
           [
-            ["passenger", "🙋 Passager"],
-            ["driver", "🏍️ Chauffeur"],
+            ["passenger", "Passager"],
+            ["driver", "Chauffeur"],
           ] as const
         ).map(([value, label]) => (
           <button

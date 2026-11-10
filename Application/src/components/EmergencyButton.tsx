@@ -20,7 +20,7 @@ function quickPosition(): Promise<{ lat: number; lng: number } | null> {
 const tel = (phone: string) => `tel:${phone.replace(/\s/g, "")}`;
 
 /**
- * Bouton 🆘 pendant une course : prévient l'équipe SURPLACE (alerte rouge + notification), envoie un SMS à la
+ * Bouton Urgence pendant une course : prévient l'équipe SURPLACE (alerte rouge + notification), envoie un SMS à la
  * personne à prévenir avec le lien de suivi, et propose d'appeler les secours.
  */
 export function EmergencyButton({ rideId, className = "" }: { rideId?: number; className?: string }) {
@@ -49,24 +49,27 @@ export function EmergencyButton({ rideId, className = "" }: { rideId?: number; c
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center justify-center gap-1 rounded-full bg-red-600 px-3 py-2 text-sm font-bold text-white shadow-md ${className}`}
+        className={`inline-flex items-center justify-center gap-1 rounded-full bg-red-600 px-3 py-2 text-sm font-bold text-white shadow-md transition hover:bg-red-700 active:scale-95 ${className}`}
         aria-label="Urgence"
       >
-        🆘 Urgence
+        Urgence
       </button>
       {open && (
-        <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-black/50 p-3 md:items-center" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md space-y-4 rounded-3xl bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="animate-fade-in fixed inset-0 z-[2000] flex items-end justify-center bg-black/50 p-3 md:items-center"
+          onClick={() => setOpen(false)}
+        >
+          <div className="sheet-in w-full max-w-md space-y-4 rounded-3xl bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <p className="text-xl font-extrabold text-red-700">🆘 Urgence</p>
+              <p className="text-xl font-extrabold text-red-700">Urgence</p>
               <button type="button" onClick={() => setOpen(false)} className="text-sm font-semibold text-muted">
                 Fermer
               </button>
             </div>
 
             {state === "sent" ? (
-              <div className="space-y-2 rounded-2xl bg-emerald-100 p-4 text-sm text-emerald-800">
-                <p className="font-bold">✅ Alerte envoyée à l&apos;équipe SURPLACE.</p>
+              <div className="animate-pop space-y-2 rounded-2xl bg-emerald-100 p-4 text-sm text-emerald-800">
+                <p className="font-bold">Alerte envoyée à l&apos;équipe SURPLACE.</p>
                 <p>{result?.contactNotified ? "Votre personne de confiance a reçu un SMS avec votre position." : "Ajoutez une personne à prévenir dans « Mon profil » pour qu'elle reçoive un SMS la prochaine fois."}</p>
                 {result?.shareUrl && (
                   <a
@@ -84,7 +87,7 @@ export function EmergencyButton({ rideId, className = "" }: { rideId?: number; c
                 type="button"
                 onClick={trigger}
                 disabled={state === "sending"}
-                className="h-16 w-full rounded-2xl bg-red-600 text-lg font-extrabold text-white disabled:opacity-60"
+                className="h-16 w-full rounded-2xl bg-red-600 text-lg font-extrabold text-white transition hover:bg-red-700 active:scale-[0.98] disabled:animate-pulse disabled:opacity-60"
               >
                 {state === "sending" ? "Envoi de l'alerte…" : "Prévenir SURPLACE maintenant"}
               </button>
@@ -94,7 +97,7 @@ export function EmergencyButton({ rideId, className = "" }: { rideId?: number; c
             <div className="space-y-2">
               <p className="text-sm font-semibold">Appeler</p>
               <a href={tel(CONTACT.emergencyPhone)} className="flex items-center justify-between rounded-2xl bg-subtle px-4 py-3 font-semibold">
-                <span>📞 Ligne d&apos;urgence SURPLACE</span>
+                <span>Ligne d&apos;urgence SURPLACE</span>
                 <span className="text-sm text-muted">{CONTACT.emergencyPhone}</span>
               </a>
               <div className="grid grid-cols-2 gap-2">

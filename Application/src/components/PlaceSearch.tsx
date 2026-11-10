@@ -15,7 +15,7 @@ interface Props {
   onActivate: () => void;
   action?: React.ReactNode;
   /** Lieux favoris et dernières destinations, proposés en premier quand le champ est vide. */
-  shortcuts?: { place: Place; icon: string }[];
+  shortcuts?: { place: Place; tag: string }[];
 }
 
 export function PlaceSearch({ kind, value, onChange, placeholder, active, onActivate, action, shortcuts = [] }: Props) {
@@ -57,9 +57,9 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
   const local = searchPopularPlaces(typed, config?.places);
   const shortcutList = typed ? [] : shortcuts;
   const suggestions = [
-    ...shortcutList.map((s) => ({ ...s.place, icon: s.icon })),
-    ...local.map((p) => ({ ...p, icon: "📍" })),
-    ...remote.filter((r) => !local.some((l) => l.label === r.label)).map((p) => ({ ...p, icon: "🗺️" })),
+    ...shortcutList.map((s) => ({ ...s.place, tag: s.tag })),
+    ...local.map((p) => ({ ...p, tag: "Lieu fréquent" })),
+    ...remote.filter((r) => !local.some((l) => l.label === r.label)).map((p) => ({ ...p, tag: "" })),
   ];
 
   function select(place: Place) {
@@ -92,21 +92,21 @@ export function PlaceSearch({ kind, value, onChange, placeholder, active, onActi
         {action}
       </div>
       {focused && (suggestions.length > 0 || searching) && (
-        <ul className="absolute inset-x-0 top-full z-[1200] mt-1 max-h-64 overflow-auto rounded-2xl bg-surface py-1 shadow-xl ring-1 ring-line">
+        <ul className="animate-pop absolute inset-x-0 top-full z-[1200] mt-1 max-h-64 origin-top overflow-auto rounded-2xl bg-surface py-1 shadow-xl ring-1 ring-line">
           {suggestions.map((p, i) => (
             <li key={`${i}-${p.label}-${p.lat}`}>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => select({ label: p.label, lat: p.lat, lng: p.lng })}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-subtle"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-subtle"
               >
-                <span aria-hidden>{p.icon}</span>
-                <span className="truncate">{p.label}</span>
+                <span className="min-w-0 flex-1 truncate">{p.label}</span>
+                {p.tag && <span className="shrink-0 text-xs text-muted">{p.tag}</span>}
               </button>
             </li>
           ))}
-          {searching && <li className="px-4 py-2 text-xs text-muted">Recherche…</li>}
+          {searching && <li className="animate-pulse px-4 py-2 text-xs text-muted">Recherche…</li>}
         </ul>
       )}
     </div>

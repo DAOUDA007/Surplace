@@ -61,7 +61,7 @@ export function rewardReferral(driverId: number) {
   const filleul = db.prepare("SELECT name FROM users WHERE id = ?").get(driverId) as { name: string };
   notifyUser(
     row.referred_by,
-    `🎁 ${days} jours offerts`,
+    `${days} jours offerts`,
     `Merci d'avoir parrainé ${filleul.name}. Votre abonnement court maintenant jusqu'au ${end.toLocaleDateString("fr-FR")}.`,
     { url: "/chauffeur" },
   );

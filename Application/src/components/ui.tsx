@@ -23,7 +23,7 @@ export function Button({
     <button
       {...props}
       disabled={props.disabled || loading}
-      className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-5 font-semibold transition duration-200 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${VARIANTS[variant]} ${className}`}
     >
       {loading && (
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -43,7 +43,7 @@ export function StatusBadge({ status }: { status: RideStatus }) {
 
 export function ErrorMessage({ children }: { children: ReactNode }) {
   if (!children) return null;
-  return <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{children}</p>;
+  return <p className="animate-pop rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{children}</p>;
 }
 
 /** Départ → destination, présentés verticalement. */

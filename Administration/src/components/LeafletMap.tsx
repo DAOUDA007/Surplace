@@ -51,10 +51,10 @@ const ICONS: Record<MarkerKind, L.DivIcon> = {
   dropoff: pin("#dc2626", "A"),
   request: pin("#f59e0b", "!"),
   driver: L.divIcon({
-    className: "",
-    html: `<div class="driver-marker">🏍️</div>`,
-    iconSize: [38, 38],
-    iconAnchor: [19, 19],
+    className: "driver-icon",
+    html: `<div class="driver-marker"></div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
   }),
 };
 

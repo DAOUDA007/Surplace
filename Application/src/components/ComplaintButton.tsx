@@ -5,7 +5,7 @@ import { Button, ErrorMessage } from "@/components/ui";
 import { api } from "@/lib/api";
 import { COMPLAINT_CATEGORIES } from "@/lib/types";
 
-/** « Signaler un problème » sur une course (objet perdu, prix, comportement…). La réponse arrive dans 🔔. */
+/** « Signaler un problème » sur une course (objet perdu, prix, comportement…). La réponse arrive dans les notifications. */
 export function ComplaintButton({ rideId }: { rideId?: number }) {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState(COMPLAINT_CATEGORIES[0]);
@@ -28,7 +28,7 @@ export function ComplaintButton({ rideId }: { rideId?: number }) {
     }
   }
 
-  if (sent) return <p className="text-sm font-semibold text-emerald-700">✅ Réclamation envoyée. Réponse dans vos notifications 🔔.</p>;
+  if (sent) return <p className="animate-pop text-sm font-semibold text-emerald-700">Réclamation envoyée. Réponse dans vos notifications.</p>;
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="text-sm font-semibold text-muted underline-offset-2 hover:underline">

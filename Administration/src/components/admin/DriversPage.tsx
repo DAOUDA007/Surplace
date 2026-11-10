@@ -146,7 +146,7 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
         {loading && !data ? (
           <LoadingRows />
         ) : drivers.length === 0 ? (
-          <EmptyState icon="🪪" title="Aucun chauffeur" text="Aucun chauffeur ne correspond à ces critères." />
+          <EmptyState title="Aucun chauffeur" text="Aucun chauffeur ne correspond à ces critères." />
         ) : (
           <TableWrap minWidth={1000}>
             <thead>
@@ -167,7 +167,7 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
                     <tr className="cursor-pointer hover:bg-subtle/60" onClick={() => setOpen(open === d.id ? null : d.id)}>
                       <td className={td}>
                         <p className="font-semibold">
-                          {d.isOnline ? "🟢 " : ""}
+                          {d.isOnline ? <span className="live-dot mr-1.5 text-emerald-500" /> : null}
                           {d.name}
                         </p>
                         <p className="text-xs text-muted">{formatPhone(d.phone)}</p>
@@ -259,8 +259,8 @@ export function DriversPage({ initialFilter = "all" }: { initialFilter?: Filter 
                               <p className="text-xs font-bold uppercase text-muted">Fiche</p>
                               <p>Inscrit le {formatDateTime(d.createdAt)}</p>
                               <p>Total gagné : {formatFcfa(d.earnings)}</p>
-                              <p>{d.isOnline ? "🟢 En ligne" : "⚪ Hors ligne"}</p>
-                              {d.referredByName && <p>🎁 Parrainé par {d.referredByName}</p>}
+                              <p>{d.isOnline ? "En ligne" : "Hors ligne"}</p>
+                              {d.referredByName && <p>Parrainé par {d.referredByName}</p>}
                             </div>
                             <div className="space-y-4">
                               <div>

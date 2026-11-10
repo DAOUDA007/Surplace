@@ -103,7 +103,7 @@ import type { AdminPermission, Role, ServerEvent, User } from "./types";
 import { normalizePhone, optionalEmail, parseId, requiredText, validateLicense, validatePin } from "./validation";
 import { SITE_URL } from "./config";
 
-const GUEST_PROFILE_ERROR = "Créez d'abord votre compte (menu ☰ › Créer mon compte).";
+const GUEST_PROFILE_ERROR = "Créez d'abord votre compte (menu › Créer mon compte).";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -383,7 +383,7 @@ api.post(
   }),
 );
 
-/** Bouton d'urgence 🆘. */
+/** Bouton d'urgence. */
 api.post(
   "/emergency",
   route((req) => createAlert(requireUser(req), req.body ?? {})),

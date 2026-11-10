@@ -52,7 +52,7 @@ export function ReportsPage() {
       />
       <PageError message={error} />
 
-      <Card title="📥 Exports pour Excel" className="mb-6">
+      <Card title="Exports pour Excel" className="mb-6">
         <div className="flex flex-wrap gap-2">
           {EXPORTS.map((e) => (
             <a

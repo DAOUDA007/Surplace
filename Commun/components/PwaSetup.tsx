@@ -62,7 +62,7 @@ export function InstallButton({ className = "", children }: { className?: string
         listeners.forEach((l) => l());
       }}
     >
-      {children ?? "📲 Installer l'application"}
+      {children ?? "Installer l'application"}
     </button>
   );
 }

@@ -36,7 +36,7 @@ export function AuditPage() {
         {loading && !data ? (
           <LoadingRows />
         ) : entries.length === 0 ? (
-          <EmptyState icon="🗂️" title="Aucune action enregistrée" />
+          <EmptyState title="Aucune action enregistrée" />
         ) : (
           <TableWrap minWidth={760}>
             <thead>

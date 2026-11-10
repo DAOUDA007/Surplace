@@ -16,7 +16,7 @@ export interface NotifyOptions {
 }
 
 /**
- * Notification dans l'application (cloche 🔔), avec push sur le téléphone et SMS en option.
+ * Notification dans l'application (écran Notifications), avec push sur le téléphone et SMS en option.
  * Renvoie le nombre de destinataires.
  */
 export function notifyUsers(userIds: number[], title: string, body: string, options: NotifyOptions = {}) {

@@ -96,7 +96,7 @@ export function ComplaintsPage() {
         <LoadingRows />
       ) : list.length === 0 ? (
         <Card>
-          <EmptyState icon="📮" title="Aucune réclamation" />
+          <EmptyState title="Aucune réclamation" />
         </Card>
       ) : (
         <div className="space-y-4">

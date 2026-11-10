@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CountUp } from "@/components/CountUp";
 import { ErrorMessage } from "@/components/ui";
 
 export function PageHeader({
@@ -60,10 +61,10 @@ export function StatTile({
 }) {
   return (
     <div
-      className={`rounded-3xl p-4 shadow-sm ring-1 ${highlight ? "bg-amber-50 ring-amber-200" : "bg-surface ring-line"}`}
+      className={`lift rounded-3xl p-4 shadow-sm ring-1 ${highlight ? "bg-amber-50 ring-amber-200" : "bg-surface ring-line"}`}
     >
       <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold">{value}</p>
+      <p className="mt-1 text-2xl font-extrabold">{typeof value === "number" ? <CountUp value={value} /> : value}</p>
       {sub && <p className="text-xs text-muted">{sub}</p>}
     </div>
   );
@@ -85,7 +86,7 @@ export function FilterTabs<T extends string>({
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
+          className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition duration-200 ${
             value === o.value ? "bg-surface shadow-sm" : "text-muted hover:text-ink"
           }`}
         >
@@ -114,22 +115,20 @@ export function SearchInput({
   }, [value, onSearch]);
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">🔍</span>
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="h-10 w-full rounded-2xl border border-line bg-surface pl-9 pr-3 text-sm outline-none focus:border-ink sm:w-72"
+        className="h-10 w-full rounded-2xl border border-line bg-surface px-3 text-sm outline-none transition-[border-color,width] duration-300 focus:border-ink sm:w-72 sm:focus:w-80"
       />
     </div>
   );
 }
 
-export function EmptyState({ icon, title, text }: { icon: string; title: string; text?: string }) {
+export function EmptyState({ title, text }: { title: string; text?: string }) {
   return (
-    <div className="py-10 text-center">
-      <p className="text-4xl">{icon}</p>
-      <p className="mt-2 font-bold">{title}</p>
+    <div className="animate-fade-in py-10 text-center">
+      <p className="font-bold">{title}</p>
       {text && <p className="text-sm text-muted">{text}</p>}
     </div>
   );
@@ -139,7 +138,7 @@ export function LoadingRows() {
   return (
     <div className="space-y-2">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-14 animate-pulse rounded-2xl bg-subtle" />
+        <div key={i} className="skeleton h-14 rounded-2xl" />
       ))}
     </div>
   );

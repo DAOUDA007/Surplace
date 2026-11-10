@@ -34,17 +34,17 @@ export function NotificationsList() {
           }}
           className="w-full rounded-2xl bg-sky-50 p-4 text-left text-sm text-sky-800"
         >
-          📳 <strong>Recevoir aussi les notifications sur le téléphone</strong>, même quand l&apos;application est fermée.
+          <strong>Recevoir aussi les notifications sur le téléphone</strong>, même quand l&apos;application est fermée.
         </button>
       )}
       {items === null ? (
-        <div className="h-32 animate-pulse rounded-3xl bg-subtle" />
+        <div className="skeleton h-32 rounded-3xl" />
       ) : items.length === 0 ? (
         <p className="py-10 text-center text-muted">Aucune notification pour le moment.</p>
       ) : (
         items.map((n) => {
           const body = (
-            <div className={`rounded-3xl p-4 shadow-sm ring-1 ring-line ${n.readAt ? "bg-surface" : "bg-brand-soft"}`}>
+            <div className={`animate-fade-up rounded-3xl p-4 shadow-sm ring-1 ring-line transition ${n.readAt ? "bg-surface" : "bg-brand-soft"}`}>
               <div className="flex items-start justify-between gap-3">
                 <p className="font-bold">{n.title}</p>
                 <span className="shrink-0 text-xs text-muted">{timeAgo(n.createdAt)}</span>

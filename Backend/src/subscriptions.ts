@@ -58,7 +58,7 @@ function extend(subscriptionId: number, driverId: number, plan: SubscriptionPlan
   ).run(now, start.toISOString(), end.toISOString(), subscriptionId);
   db.prepare("UPDATE drivers SET subscription_until = ? WHERE user_id = ?").run(end.toISOString(), driverId);
   publishToUser(driverId, { type: "profile" });
-  notifyUser(driverId, "Abonnement activé ✅", `Votre abonnement est valable jusqu'au ${end.toLocaleDateString("fr-FR")}.`, {
+  notifyUser(driverId, "Abonnement activé", `Votre abonnement est valable jusqu'au ${end.toLocaleDateString("fr-FR")}.`, {
     url: "/chauffeur",
   });
   // Premier abonnement payé d'un chauffeur parrainé : son parrain reçoit des jours offerts.
@@ -89,6 +89,7 @@ export function getDriverSubscription(driverId: number) {
     pending: history.find((s) => s.status === "pending") ?? null,
     history: history.filter((s) => s.status === "paid"),
     prices: { ...getSettings().plans },
+    paymentLinks: { ...getSettings().paymentLinks },
   };
 }
 

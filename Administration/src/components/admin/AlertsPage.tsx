@@ -21,7 +21,7 @@ function AlertCard({ alert, onHandle, busy }: { alert: EmergencyAlert; onHandle:
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${open ? "bg-red-600 text-white" : "bg-emerald-100 text-emerald-800"}`}>
-              {open ? "🆘 À TRAITER" : "Traitée"}
+              {open ? "À TRAITER" : "Traitée"}
             </span>
             <span className="text-sm text-muted">
               {formatDateTime(alert.createdAt)} · {timeAgo(alert.createdAt)}
@@ -32,7 +32,7 @@ function AlertCard({ alert, onHandle, busy }: { alert: EmergencyAlert; onHandle:
               {alert.userName} <span className="text-sm font-normal text-muted">({ROLE[alert.userRole]})</span>
             </p>
             <a href={`tel:${alert.userPhone}`} className="font-semibold text-brand">
-              📞 {formatPhone(alert.userPhone)}
+              Appeler {formatPhone(alert.userPhone)}
             </a>
             {alert.emergencyContact && <p className="text-sm text-muted">Personne à prévenir : {alert.emergencyContact} (SMS envoyé)</p>}
           </div>
@@ -110,7 +110,7 @@ export function AlertsPage() {
     <>
       <PageHeader
         title="Urgences"
-        subtitle="Alertes 🆘 déclenchées pendant une course. Rappelez la personne au plus vite."
+        subtitle="Alertes d'urgence déclenchées pendant une course. Rappelez la personne au plus vite."
         actions={
           <FilterTabs
             value={filter}
@@ -127,7 +127,7 @@ export function AlertsPage() {
         <LoadingRows />
       ) : alerts.length === 0 ? (
         <Card>
-          <EmptyState icon="✅" title="Aucune alerte" text={filter === "open" ? "Aucune urgence en attente." : "Aucune alerte enregistrée."} />
+          <EmptyState title="Aucune alerte" text={filter === "open" ? "Aucune urgence en attente." : "Aucune alerte enregistrée."} />
         </Card>
       ) : (
         <div className="space-y-4">

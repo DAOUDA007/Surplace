@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell, Sheet } from "@/components/AppShell";
+import { CountUp } from "@/components/CountUp";
 import { EmergencyButton } from "@/components/EmergencyButton";
 import { MapView, type MapMarker } from "@/components/MapView";
 import { ShareRideButton } from "@/components/ShareRideButton";
@@ -19,9 +20,9 @@ import type { AvailableRide, DemandCell, DriverProfile, DriverSubscription, LatL
 import { SubscriptionPanel } from "./SubscriptionPanel";
 
 const LINKS = [
-  { href: "/chauffeur/historique", label: "💰 Mes gains et statistiques" },
-  { href: "/chauffeur/profil", label: "👤 Profil et documents" },
-  { href: "/notifications", label: "🔔 Notifications" },
+  { href: "/chauffeur/historique", label: "Mes gains et statistiques" },
+  { href: "/chauffeur/profil", label: "Profil et documents" },
+  { href: "/notifications", label: "Notifications" },
 ];
 
 /** Garde l'écran allumé tant que le chauffeur est en ligne (API Wake Lock, si le téléphone la propose). */
@@ -58,7 +59,11 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
   const [finished, setFinished] = useState<Ride | null>(null);
   const [today, setToday] = useState({ count: 0, total: 0 });
   const [subscription, setSubscription] = useState<DriverSubscription | null>(null);
+  // Arrivée depuis un bouton « Choisir » de la page d'accueil (/chauffeur?abonnement=1) : panneau ouvert.
   const [showSubscription, setShowSubscription] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("abonnement")) setShowSubscription(true);
+  }, []);
   const [heat, setHeat] = useState<DemandCell[] | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -181,7 +186,7 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
         // Le suivi continue après un simple délai dépassé : on prévient sans arrêter.
         setNotice(
           err.code === err.PERMISSION_DENIED
-            ? "GPS refusé : autorisez la localisation pour ce site (icône 🔒 à gauche de l'adresse), sinon aucun passager ne vous verra."
+            ? "GPS refusé : autorisez la localisation pour ce site (cadenas à gauche de l'adresse), sinon aucun passager ne vous verra."
             : "GPS : position introuvable pour l'instant. Activez la localisation du téléphone et placez-vous à découvert.",
         );
       },
@@ -326,7 +331,7 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
             href="/chauffeur/profil#documents"
             className={`mb-3 block rounded-xl px-3 py-2 text-sm ${profile.documentsRequired ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}
           >
-            📄 {profile.documentsRequired ? "Documents obligatoires" : "Documents à envoyer"} : {profile.documentIssues.join(", ")}.{" "}
+            {profile.documentsRequired ? "Documents obligatoires" : "Documents à envoyer"} : {profile.documentIssues.join(", ")}.{" "}
             <span className="font-semibold underline">Mettre à jour</span>
           </Link>
         )}
@@ -345,14 +350,16 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
               onClose={profile.subscriptionActive ? () => setShowSubscription(false) : undefined}
             />
           ) : (
-            <div className="h-40 animate-pulse rounded-2xl bg-subtle" />
+            <div className="skeleton h-40 rounded-2xl" />
           )
         ) : (
-          <div className="space-y-4">
+          <div className="step-in space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-muted">Aujourd&apos;hui</p>
-                <p className="text-xl font-extrabold">{formatFcfa(today.total)}</p>
+                <p className="text-xl font-extrabold">
+                  <CountUp value={today.total} format={(n) => formatFcfa(Math.round(n))} />
+                </p>
                 <p className="text-xs text-muted">
                   {today.count} course{today.count > 1 ? "s" : ""}
                 </p>
@@ -365,10 +372,10 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
             <button
               type="button"
               onClick={() => setShowSubscription(true)}
-              className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm ${subscriptionEndingSoon ? "bg-amber-50 text-amber-800" : "bg-subtle"}`}
+              className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm transition hover:bg-line active:scale-[0.99] ${subscriptionEndingSoon ? "bg-amber-50 text-amber-800" : "bg-subtle"}`}
             >
               <span>
-                <span className="font-semibold">{subscriptionEndingSoon ? "⚠️ Abonnement bientôt expiré" : "Abonnement actif"}</span>
+                <span className="font-semibold">{subscriptionEndingSoon ? "Abonnement bientôt expiré" : "Abonnement actif"}</span>
                 {subscription && (
                   <span className="block text-xs opacity-80">
                     {subscription.daysLeft} jour{subscription.daysLeft > 1 ? "s" : ""} restant
@@ -384,9 +391,9 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
               <button
                 type="button"
                 onClick={() => toggleHeat().catch((err) => setError((err as Error).message))}
-                className={`rounded-2xl px-3 py-3 text-left text-sm ${heat ? "bg-brand text-white" : "bg-subtle"}`}
+                className={`rounded-2xl px-3 py-3 text-left text-sm transition duration-300 active:scale-[0.99] ${heat ? "bg-brand text-white" : "bg-subtle hover:bg-line"}`}
               >
-                <span className="font-semibold">🔥 Zones demandées</span>
+                <span className="font-semibold">Zones demandées</span>
                 <span className="block text-xs opacity-80">{heat ? "Affichées sur la carte" : "Où sont les clients ?"}</span>
               </button>
             </div>
@@ -396,13 +403,15 @@ export function DriverApp({ user, initialProfile }: { user: User; initialProfile
                 Passez en ligne pour recevoir les demandes de courses autour de vous.
               </p>
             ) : available.length === 0 ? (
-              <div className="py-6 text-center">
-                <p className="text-3xl">📡</p>
-                <p className="mt-2 font-semibold">En attente de courses…</p>
+              <div className="animate-fade-in py-6 text-center">
+                <div className="radar mx-auto h-10 w-10">
+                  <span className="relative z-10 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-brand shadow" />
+                </div>
+                <p className="mt-3 font-semibold">En attente de courses…</p>
                 <p className="text-sm text-muted">Les demandes vous seront proposées ici, avec un signal sonore.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="stagger space-y-3">
                 <p className="font-bold">
                   {available.length} demande{available.length > 1 ? "s" : ""} à proximité
                 </p>
@@ -436,17 +445,24 @@ function RequestCard({
   onDecline: () => void;
 }) {
   const secondsLeft = ride.offerExpiresAt ? Math.max(0, Math.round((new Date(ride.offerExpiresAt).getTime() - Date.now()) / 1000)) : null;
+  // Durée totale de l'offre, mémorisée à l'arrivée de la carte : la barre se vide en continu jusqu'à 0.
+  const [offerSeconds] = useState(secondsLeft);
   return (
-    <div className={`space-y-3 rounded-2xl p-4 ${ride.offerExpiresAt ? "border-2 border-brand bg-brand-soft" : "border border-line"}`}>
+    <div className={`animate-pop space-y-3 rounded-2xl p-4 ${ride.offerExpiresAt ? "border-2 border-brand bg-brand-soft" : "border border-line"}`}>
       {secondsLeft != null && (
-        <div className="flex items-center justify-between text-sm font-bold text-brand">
-          <span>⚡ Course proposée pour vous</span>
-          <span className="rounded-full bg-brand px-2 py-0.5 text-white">{secondsLeft} s</span>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm font-bold text-brand">
+            <span>Course proposée pour vous</span>
+            <span className="rounded-full bg-brand px-2 py-0.5 tabular-nums text-white">{secondsLeft} s</span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-brand/20">
+            <div className="countdown-bar h-full bg-brand" style={{ animationDuration: `${offerSeconds}s` }} />
+          </div>
         </div>
       )}
       {ride.scheduledAt && (
         <p className="text-xs font-semibold text-sky-700">
-          🕒 Réservée pour {new Date(ride.scheduledAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+          Réservée pour {new Date(ride.scheduledAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
         </p>
       )}
       <div className="flex items-start justify-between gap-3">
@@ -477,20 +493,18 @@ function RequestCard({
 
 function AccountPending({ status }: { status: DriverProfile["status"] }) {
   return status === "pending" ? (
-    <div className="space-y-2 py-4 text-center">
-      <p className="text-4xl">⏳</p>
+    <div className="step-in space-y-2 py-4 text-center">
       <p className="text-xl font-extrabold">Compte en cours de validation</p>
       <p className="text-sm text-muted">
         L&apos;équipe SURPLACE vérifie vos informations et vos documents. Vous pourrez passer en ligne dès la validation
         de votre compte. Cette page se mettra à jour automatiquement.
       </p>
       <Link href="/chauffeur/profil#documents" className="inline-block pt-2 text-sm font-semibold text-brand">
-        📄 Envoyer mes documents
+        Envoyer mes documents
       </Link>
     </div>
   ) : (
-    <div className="space-y-2 py-4 text-center">
-      <p className="text-4xl">⛔</p>
+    <div className="step-in space-y-2 py-4 text-center">
       <p className="text-xl font-extrabold">Compte suspendu</p>
       <p className="text-sm text-muted">Contactez le support SURPLACE pour plus d&apos;informations.</p>
     </div>
@@ -515,12 +529,13 @@ function Finished({ ride, onDone }: { ride: Ride; onDone: () => void }) {
   }
 
   return (
-    <div className="space-y-4 text-center">
-      <p className="text-4xl">✅</p>
+    <div className="step-in space-y-4 text-center">
       <p className="text-xl font-extrabold">Course terminée</p>
-      <div className="rounded-2xl bg-brand-soft p-4">
+      <div className="animate-pop rounded-2xl bg-brand-soft p-4">
         <p className="text-sm text-muted">Encaissez en espèces</p>
-        <p className="text-3xl font-extrabold">{formatFcfa(ride.price)}</p>
+        <p className="text-3xl font-extrabold">
+          <CountUp value={ride.price} format={(n) => formatFcfa(Math.round(n))} />
+        </p>
         <p className="mt-1 text-xs text-muted">Aucune commission : ce montant est entièrement pour vous.</p>
       </div>
       <div>
@@ -532,7 +547,7 @@ function Finished({ ride, onDone }: { ride: Ride; onDone: () => void }) {
               type="button"
               disabled={sent}
               onClick={() => rate(n)}
-              className={`text-3xl ${n <= rating ? "text-amber-400" : "text-line"}`}
+              className={`text-3xl transition duration-200 enabled:hover:scale-110 enabled:active:scale-90 ${n <= rating ? "scale-110 text-amber-400" : "text-line"}`}
               aria-label={`${n} étoile${n > 1 ? "s" : ""}`}
             >
               ★
@@ -572,10 +587,15 @@ function CurrentRide({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div key={ride.status} className="step-in flex items-center justify-between">
         <p className="text-lg font-extrabold">{next.title}</p>
-        <a href={nav} target="_blank" rel="noreferrer" className="rounded-full bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700">
-          🧭 GPS
+        <a
+          href={nav}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition active:scale-95"
+        >
+          Itinéraire
         </a>
       </div>
 
@@ -593,10 +613,10 @@ function CurrentRide({
         </div>
         <a
           href={`tel:${contactPhone}`}
-          className="grid h-11 w-11 place-items-center rounded-full bg-green-600 text-lg text-white"
+          className="shrink-0 rounded-full bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700 active:scale-95"
           title="Appeler le passager"
         >
-          📞
+          Appeler
         </a>
       </div>
 
@@ -608,7 +628,7 @@ function CurrentRide({
       <Route from={ride.pickup.label} to={ride.dropoff.label} />
 
       <div className="flex items-center justify-between rounded-2xl bg-brand-soft px-4 py-3">
-        <span className="text-sm font-medium">💵 Espèces · {ride.distanceKm.toLocaleString("fr-FR")} km</span>
+        <span className="text-sm font-medium">Espèces · {ride.distanceKm.toLocaleString("fr-FR")} km</span>
         <span className="text-lg font-extrabold">{formatFcfa(ride.price)}</span>
       </div>
 

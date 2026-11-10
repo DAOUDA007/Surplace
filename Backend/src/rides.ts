@@ -336,7 +336,7 @@ export function applyAction(rideId: number, user: User, action: RideAction): Rid
     pushPassenger(
       ride.passenger_id,
       rideId,
-      "Chauffeur trouvé 🏍️",
+      "Chauffeur trouvé",
       `${accepted.driver?.name} arrive (${accepted.driver?.motoModel}, ${accepted.driver?.plate}).`,
     );
     return accepted;
@@ -397,7 +397,7 @@ export function applyAction(rideId: number, user: User, action: RideAction): Rid
   if (res.changes === 0) throw new HttpError(409, "Action impossible à cette étape de la course.");
   notify(ride);
   if (action === "arrive") pushPassenger(ride.passenger_id, rideId, "Votre chauffeur est arrivé", "Rejoignez-le au point de départ.");
-  if (action === "complete") pushPassenger(ride.passenger_id, rideId, "Course terminée 🎉", "Pensez à noter votre chauffeur.");
+  if (action === "complete") pushPassenger(ride.passenger_id, rideId, "Course terminée", "Pensez à noter votre chauffeur.");
   return getRide(rideId)!;
 }
 

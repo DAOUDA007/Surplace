@@ -27,7 +27,7 @@ export function SubscriptionPanel({
   const [selected, setSelected] = useState<SubscriptionPlanId>("monthly");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const { active, until, daysLeft, pending, history, prices } = subscription;
+  const { active, until, daysLeft, pending, history, prices, paymentLinks } = subscription;
   // Prix réglés dans l'administration.
   const yearlySaving = prices.monthly * 12 - prices.yearly;
 
@@ -58,11 +58,11 @@ export function SubscriptionPanel({
       </div>
 
       <div
-        className={`rounded-2xl p-4 ${active ? "bg-emerald-100 text-emerald-800" : "bg-amber-50 text-amber-800"}`}
+        className={`animate-pop rounded-2xl p-4 ${active ? "bg-emerald-100 text-emerald-800" : "bg-amber-50 text-amber-800"}`}
       >
         {active ? (
           <>
-            <p className="font-bold">✅ Abonnement actif</p>
+            <p className="font-bold">Abonnement actif</p>
             <p className="text-sm">
               Jusqu&apos;au {formatDate(until!)} · {daysLeft} jour{daysLeft > 1 ? "s" : ""} restant
               {daysLeft > 1 ? "s" : ""}
@@ -70,7 +70,7 @@ export function SubscriptionPanel({
           </>
         ) : (
           <>
-            <p className="font-bold">{until ? "⚠️ Abonnement expiré" : "Aucun abonnement"}</p>
+            <p className="font-bold">{until ? "Abonnement expiré" : "Aucun abonnement"}</p>
             <p className="text-sm">
               {until ? `Expiré le ${formatDate(until)}. ` : ""}Abonnez-vous pour passer en ligne et recevoir des
               courses.
@@ -80,15 +80,33 @@ export function SubscriptionPanel({
       </div>
 
       {pending ? (
-        <div className="space-y-3 rounded-2xl border-2 border-dashed border-brand p-4">
+        <div className="animate-fade-up space-y-3 rounded-2xl border-2 border-dashed border-brand p-4">
           <p className="font-bold">
             Demande en attente : {SUBSCRIPTION_PLANS[pending.plan].label} · {formatFcfa(pending.amount)}
           </p>
-          <p className="text-sm text-muted">
-            Réglez {formatFcfa(pending.amount)} à SURPLACE (espèces ou Mobile Money au{" "}
-            <span className="font-semibold text-ink">{CONTACT.phone}</span>). Votre abonnement sera activé dès que
-            l&apos;équipe aura confirmé votre paiement.
-          </p>
+          {paymentLinks[pending.plan] ? (
+            <>
+              <a
+                href={paymentLinks[pending.plan]}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-brand font-semibold text-white transition hover:bg-brand-dark active:scale-[0.97]"
+              >
+                Payer {formatFcfa(pending.amount)}
+              </a>
+              <p className="text-sm text-muted">
+                Payez en ligne avec le bouton ci-dessus, ou en espèces / Mobile Money au{" "}
+                <span className="font-semibold text-ink">{CONTACT.phone}</span>. Votre abonnement sera activé dès que
+                l&apos;équipe aura confirmé votre paiement.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted">
+              Réglez {formatFcfa(pending.amount)} à SURPLACE (espèces ou Mobile Money au{" "}
+              <span className="font-semibold text-ink">{CONTACT.phone}</span>). Votre abonnement sera activé dès que
+              l&apos;équipe aura confirmé votre paiement.
+            </p>
+          )}
           <Button variant="ghost" loading={busy} onClick={() => call("/api/driver/subscription/cancel", {})} className="w-full">
             Annuler la demande
           </Button>
@@ -104,8 +122,8 @@ export function SubscriptionPanel({
                   key={id}
                   type="button"
                   onClick={() => setSelected(id)}
-                  className={`relative rounded-2xl border-2 p-4 text-left transition ${
-                    selected === id ? "border-brand bg-brand-soft" : "border-line"
+                  className={`relative rounded-2xl border-2 p-4 text-left transition duration-200 active:scale-[0.98] ${
+                    selected === id ? "border-brand bg-brand-soft" : "border-line hover:border-faint"
                   }`}
                 >
                   {id === "yearly" && yearlySaving > 0 && (
@@ -128,7 +146,8 @@ export function SubscriptionPanel({
             onClick={() => call("/api/driver/subscription", { plan: selected })}
             className="w-full"
           >
-            Demander l&apos;abonnement {SUBSCRIPTION_PLANS[selected].label.toLowerCase()}
+            {paymentLinks[selected] ? "Demander et payer" : "Demander"} l&apos;abonnement{" "}
+            {SUBSCRIPTION_PLANS[selected].label.toLowerCase()}
           </Button>
         </>
       )}

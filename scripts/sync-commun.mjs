@@ -35,6 +35,8 @@ const TARGETS = {
   "components/PwaSetup.tsx": ["Application/src/components", "Administration/src/components"],
   "components/PinResetForm.tsx": ["Application/src/components", "Administration/src/components"],
   "components/OtpField.tsx": ["Application/src/components", "Administration/src/components"],
+  "components/ScrollReveal.tsx": ["Application/src/components", "Administration/src/components"],
+  "components/CountUp.tsx": ["Application/src/components", "Administration/src/components"],
   "hooks/useServerEvents.ts": ["Application/src/hooks", "Administration/src/hooks"],
   "hooks/usePublicConfig.ts": ["Application/src/hooks", "Administration/src/hooks"],
   "styles/globals.css": ["Application/src/app", "Administration/src/app"],

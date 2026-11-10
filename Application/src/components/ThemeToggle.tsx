@@ -7,10 +7,13 @@ import { THEME_STORAGE_KEY as STORAGE_KEY } from "@/lib/theme";
 type Theme = "light" | "dark" | "system";
 
 const ORDER: Theme[] = ["light", "dark", "system"];
-const LABELS: Record<Theme, { icon: string; label: string }> = {
-  light: { icon: "☀️", label: "Clair" },
-  dark: { icon: "🌙", label: "Sombre" },
-  system: { icon: "🖥️", label: "Auto" },
+const LABELS: Record<Theme, string> = { light: "Clair", dark: "Sombre", system: "Auto" };
+
+/** Rond vide (clair), plein (sombre) ou à moitié rempli (automatique), qui tourne à chaque changement. */
+const DISC: Record<Theme, { fill: string; turn: number }> = {
+  light: { fill: "transparent", turn: 0 },
+  dark: { fill: "currentColor", turn: 180 },
+  system: { fill: "linear-gradient(90deg, currentColor 50%, transparent 50%)", turn: 360 },
 };
 
 function readTheme(): Theme {
@@ -57,17 +60,22 @@ export function ThemeToggle({ className = "", withLabel = false }: { className?:
     setTheme(value);
   }
 
-  const current = LABELS[theme ?? "system"];
+  const label = LABELS[theme ?? "system"];
+  const disc = DISC[theme ?? "system"];
   return (
     <button
       type="button"
       onClick={next}
-      title={`Thème : ${current.label} (cliquer pour changer)`}
-      aria-label={`Thème : ${current.label}`}
+      title={`Thème : ${label} (cliquer pour changer)`}
+      aria-label={`Thème : ${label}`}
       className={`inline-flex items-center gap-2 ${className}`}
     >
-      <span aria-hidden>{theme ? current.icon : "🌓"}</span>
-      {withLabel && <span>Thème : {theme ? current.label : "…"}</span>}
+      <span
+        aria-hidden
+        className="inline-block h-4 w-4 shrink-0 rounded-full border-2 border-current transition-transform duration-500"
+        style={{ background: disc.fill, transform: `rotate(${disc.turn}deg)` }}
+      />
+      {withLabel && <span>Thème : {theme ? label : "…"}</span>}
     </button>
   );
 }
